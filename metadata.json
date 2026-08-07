@@ -1,0 +1,6 @@
+{
+  "name": "Rawang Music Admin Portal",
+  "description": "KodeKloud-style internal admin dashboard for Rawang Music backend with complete CRUD, reports, media management, track player, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
