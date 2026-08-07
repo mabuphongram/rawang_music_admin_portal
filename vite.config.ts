@@ -1,10 +1,19 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  // Vite only exposes variables prefixed with VITE_ by default. These two
+  // values are deliberately made available because they are public URLs used
+  // by the browser to call the API and load MinIO objects.
+  const env = loadEnv(mode, process.cwd(), '');
+
   return {
+    define: {
+      'import.meta.env.APP_URL': JSON.stringify(env.APP_URL ?? ''),
+      'import.meta.env.MINIO_PREFIX_URL': JSON.stringify(env.MINIO_PREFIX_URL ?? ''),
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

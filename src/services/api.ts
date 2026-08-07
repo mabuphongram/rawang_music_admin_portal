@@ -4,7 +4,9 @@ import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardSta
 export function getApiBaseUrl(): string {
   const custom = localStorage.getItem('RAWANG_API_URL');
   if (custom) return custom.replace(/\/+$/, '');
-  const envUrl = import.meta.env.VITE_API_URL;
+  // APP_URL is the backend API base URL supplied by this deployment. Keep the
+  // VITE_ name as a backwards-compatible local-development fallback.
+  const envUrl = import.meta.env.APP_URL || import.meta.env.VITE_API_URL;
   if (envUrl) return envUrl.replace(/\/+$/, '');
   return '/api'; // Relative endpoint pointing to our Express server or proxy
 }
@@ -12,7 +14,7 @@ export function getApiBaseUrl(): string {
 export function getMinioPrefix(): string {
   const custom = localStorage.getItem('RAWANG_MINIO_PREFIX');
   if (custom) return custom.replace(/\/+$/, '');
-  const envPrefix = import.meta.env.VITE_MINIO_PREFIX;
+  const envPrefix = import.meta.env.MINIO_PREFIX_URL || import.meta.env.VITE_MINIO_PREFIX;
   if (envPrefix) return envPrefix.replace(/\/+$/, '');
   return '';
 }
