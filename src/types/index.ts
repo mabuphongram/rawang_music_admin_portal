@@ -23,6 +23,7 @@ export interface Track {
   title: string;
   rawangTitle?: string;
   artistName: string;
+  composerName?: string;
   albumName: string;
   ownerType: OwnerType;
   durationSeconds: number;

@@ -50,9 +50,14 @@ export const TracksView: React.FC<TracksViewProps> = ({
   const [title, setTitle] = useState('');
   const [rawangTitle, setRawangTitle] = useState('');
   const [artistName, setArtistName] = useState('');
+  const [composerName, setComposerName] = useState('');
   const [albumName, setAlbumName] = useState('');
   const [ownerType, setOwnerType] = useState<'singer' | 'organization' | 'anonymous'>('singer');
   const [durationSeconds, setDurationSeconds] = useState<number>(180);
+  // Duration picker state (derived from durationSeconds)
+  const [durHours, setDurHours] = useState<number>(0);
+  const [durMinutes, setDurMinutes] = useState<number>(3);
+  const [durSecs, setDurSecs] = useState<number>(0);
   const [audioUrlString, setAudioUrlString] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [karaokeFile, setKaraokeFile] = useState<File | null>(null);
@@ -61,6 +66,22 @@ export const TracksView: React.FC<TracksViewProps> = ({
   const [genre, setGenre] = useState('Folk');
   const [playCount, setPlayCount] = useState<number>(0);
   const [hasKaraoke, setHasKaraoke] = useState(false);
+
+  // Helpers: sync picker <-> durationSeconds
+  const applyDuration = (h: number, m: number, s: number) => {
+    setDurHours(h);
+    setDurMinutes(m);
+    setDurSecs(s);
+    setDurationSeconds(h * 3600 + m * 60 + s);
+  };
+  const parseDurationToFields = (total: number) => {
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    setDurHours(h);
+    setDurMinutes(m);
+    setDurSecs(s);
+  };
 
   // Lyrics viewer modal
   const [viewingLyricsTrack, setViewingLyricsTrack] = useState<Track | null>(null);
@@ -110,7 +131,9 @@ export const TracksView: React.FC<TracksViewProps> = ({
     setOwnerType(initialAlbum?.ownerType || 'singer');
     setTitle('');
     setRawangTitle('');
+    setComposerName('');
     setDurationSeconds(210);
+    parseDurationToFields(210);
     setAudioUrlString('');
     setAudioFile(null);
     setKaraokeFile(null);
@@ -130,7 +153,10 @@ export const TracksView: React.FC<TracksViewProps> = ({
     setOwnerType(track.ownerType);
     setTitle(track.title);
     setRawangTitle(track.rawangTitle || '');
-    setDurationSeconds(track.durationSeconds || 180);
+    setComposerName(track.composerName || '');
+    const totalSec = track.durationSeconds || 180;
+    setDurationSeconds(totalSec);
+    parseDurationToFields(totalSec);
     setAudioUrlString(track.audioUrl);
     setAudioFile(null);
     setKaraokeFile(null);
@@ -169,6 +195,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
         fd.append('title', title.trim());
         if (rawangTitle) fd.append('rawangTitle', rawangTitle.trim());
         fd.append('artistName', artistName.trim());
+        if (composerName) fd.append('composerName', composerName.trim());
         fd.append('albumName', albumName.trim());
         fd.append('ownerType', ownerType);
         fd.append('durationSeconds', String(durationSeconds));
@@ -196,6 +223,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
           title: title.trim(),
           rawangTitle: rawangTitle.trim(),
           artistName: artistName.trim(),
+          composerName: composerName.trim(),
           albumName: albumName.trim(),
           ownerType,
           durationSeconds: Number(durationSeconds),
@@ -542,22 +570,82 @@ export const TracksView: React.FC<TracksViewProps> = ({
                 </div>
               </div>
 
-              {/* Duration & Genre */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[#ededed] font-medium mb-1 font-mono">
-                    Duration (Sec) <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={durationSeconds}
-                    onChange={(e) => setDurationSeconds(Number(e.target.value))}
-                    className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
-                  />
-                </div>
+              {/* Composer Name */}
+              <div>
+                <label className="block text-[#ededed] font-medium mb-1 font-mono">Composer Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. John Smith (optional)"
+                  value={composerName}
+                  onChange={(e) => setComposerName(e.target.value)}
+                  className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]"
+                />
+              </div>
 
+              {/* Duration picker */}
+              <div>
+                <label className="block text-[#ededed] font-medium mb-1 font-mono flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#3ecf8e]" />
+                  Duration <span className="text-red-400">*</span>
+                  <span className="ml-auto text-[10px] text-[#666666] font-mono font-normal">
+                    = {durationSeconds}s total
+                  </span>
+                </label>
+                <div className="flex items-center gap-2">
+                  {/* Hours */}
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={durHours}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(23, Number(e.target.value)));
+                        applyDuration(v, durMinutes, durSecs);
+                      }}
+                      className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] text-center focus:outline-none focus:border-[#3ecf8e] font-mono text-sm"
+                    />
+                    <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-[#666666] font-mono">HH</span>
+                  </div>
+                  <span className="text-[#3ecf8e] font-bold text-lg pb-0.5">:</span>
+                  {/* Minutes */}
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={durMinutes}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(59, Number(e.target.value)));
+                        applyDuration(durHours, v, durSecs);
+                      }}
+                      className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] text-center focus:outline-none focus:border-[#3ecf8e] font-mono text-sm"
+                    />
+                    <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-[#666666] font-mono">MM</span>
+                  </div>
+                  <span className="text-[#3ecf8e] font-bold text-lg pb-0.5">:</span>
+                  {/* Seconds */}
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={durSecs}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(59, Number(e.target.value)));
+                        applyDuration(durHours, durMinutes, v);
+                      }}
+                      className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] text-center focus:outline-none focus:border-[#3ecf8e] font-mono text-sm"
+                    />
+                    <span className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-[#666666] font-mono">SS</span>
+                  </div>
+                </div>
+                {/* spacer for the HH/MM/SS labels */}
+                <div className="h-5" />
+              </div>
+
+              {/* Genre & Initial Plays */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[#ededed] font-medium mb-1 font-mono">Genre</label>
                   <input
