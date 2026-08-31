@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import { MediaImage } from '../common/MediaImage';
 import { ConfirmDialog } from '../common/ConfirmDialog';
-import { Building2, Plus, Edit2, Trash2, X, CheckCircle2 } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, X, CheckCircle2, Music, Phone, ChevronRight } from 'lucide-react';
 
 interface OrganizationsViewProps {
   searchTerm: string;
@@ -32,6 +32,10 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
   const [description, setDescription] = useState('');
   const [avatarUrlString, setAvatarUrlString] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [phone, setPhone] = useState('');
+  const [youtube, setYoutube] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [tiktok, setTiktok] = useState('');
 
   // Delete modal
   const [deletingOrg, setDeletingOrg] = useState<Organization | null>(null);
@@ -65,6 +69,10 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
     setDescription('');
     setAvatarUrlString('');
     setAvatarFile(null);
+    setPhone('');
+    setYoutube('');
+    setFacebook('');
+    setTiktok('');
     setIsModalOpen(true);
   };
 
@@ -74,6 +82,10 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
     setDescription(org.description || '');
     setAvatarUrlString(org.avatarUrl || '');
     setAvatarFile(null);
+    setPhone(org.phone || '');
+    setYoutube(org.socialLinks?.youtube || '');
+    setFacebook(org.socialLinks?.facebook || '');
+    setTiktok(org.socialLinks?.tiktok || '');
     setIsModalOpen(true);
   };
 
@@ -92,6 +104,10 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
         const fd = new FormData();
         fd.append('name', name.trim());
         if (description) fd.append('description', description.trim());
+        if (phone) fd.append('phone', phone.trim());
+        if (youtube) fd.append('socialLinks[youtube]', youtube.trim());
+        if (facebook) fd.append('socialLinks[facebook]', facebook.trim());
+        if (tiktok) fd.append('socialLinks[tiktok]', tiktok.trim());
         fd.append('avatar', avatarFile);
         bodyData = fd;
       } else {
@@ -99,6 +115,12 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
           name: name.trim(),
           description: description.trim(),
           avatarUrl: avatarUrlString,
+          phone: phone.trim(),
+          socialLinks: {
+            youtube: youtube.trim(),
+            facebook: facebook.trim(),
+            tiktok: tiktok.trim(),
+          },
         };
       }
 
@@ -139,7 +161,7 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
 
   const filteredOrgs = organizations.filter((o) => {
     const term = searchTerm.toLowerCase();
-    return o.name.toLowerCase().includes(term) || (o.description || '').toLowerCase().includes(term);
+    return o.name.toLowerCase().includes(term) || (o.description || '').toLowerCase().includes(term) || (o.phone || '').toLowerCase().includes(term);
   });
 
   return (
@@ -147,7 +169,7 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
       <div className="flex items-center justify-between bg-[#1c1c1c] border border-[#282828] p-4 rounded">
         <div>
           <h3 className="text-sm font-mono font-bold text-white">Organizations Directory</h3>
-          <p className="text-xs text-[#888888]">Cultural heritage associations & publishing bodies</p>
+          <p className="text-xs text-[#888888]">Cultural heritage associations & publishing bodies — {organizations.length} total</p>
         </div>
 
         <button
@@ -160,9 +182,9 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-[#1c1c1c] border border-[#282828] rounded p-5 animate-pulse h-48" />
+            <div key={i} className="bg-[#1c1c1c] border border-[#282828] rounded-xl p-4 animate-pulse h-[92px]" />
           ))}
         </div>
       ) : filteredOrgs.length === 0 ? (
@@ -180,40 +202,87 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="space-y-3">
           {filteredOrgs.map((org) => (
             <div
               key={org.id}
-              className="bg-[#1c1c1c] border border-[#282828] hover:border-[#3e3e3e] rounded p-5 shadow-sm flex flex-col items-center text-center justify-between group transition-all"
+              className="bg-[#1e1e1e] border border-[#2a2a2a] hover:border-[#333333] rounded-xl p-3.5 flex items-center gap-4 group transition-all shadow-sm"
             >
-              <div className="w-full flex flex-col items-center">
+              <div className="shrink-0 rounded-xl" style={{ boxShadow: '0 0 14px rgba(255,193,7,0.35)' }}>
                 <MediaImage
                   src={org.avatarUrl}
                   alt={org.name}
                   type="organization"
-                  className="w-20 h-20 rounded-xl object-cover mb-3 ring-1 ring-[#282828]"
+                  className="w-[62px] h-[62px] rounded-xl object-cover ring-1 ring-white/10"
                 />
-                <h4 className="text-xs font-bold text-white">{org.name}</h4>
-                <p className="text-xs text-[#888888] mt-1 line-clamp-3">
-                  {org.description || 'No organization description.'}
-                </p>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#282828] w-full flex items-center justify-end gap-2">
-                <button
-                  onClick={() => handleOpenEdit(org)}
-                  className="p-1.5 rounded bg-[#222222] border border-[#333333] hover:bg-[#2a2a2a] text-[#ededed] transition-colors"
-                  title="Edit Organization"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setDeletingOrg(org)}
-                  className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-                  title="Delete Organization"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-[15px] font-bold text-white truncate">{org.name}</h4>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Building2 className="w-3 h-3 text-[#FFC107]" />
+                  <span className="text-[11px] text-white/60">Organization</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.07] text-[11px]">
+                    <Music className="w-3 h-3 text-[#FFC107]" />
+                    <span className="font-bold text-white">{org.albumCount ?? 0}</span>
+                    <span className="text-white/50">Albums</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.07] text-[11px]">
+                    <Music className="w-3 h-3 text-[#FFC107]" />
+                    <span className="font-bold text-white">{org.trackCount ?? 0}</span>
+                    <span className="text-white/50">Tracks</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex flex-col items-end gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  {org.socialLinks?.youtube ? (
+                    <a href={org.socialLinks.youtube} target="_blank" rel="noreferrer" className="w-7 h-7 rounded-md bg-[#FF0000] flex items-center justify-center"><span className="text-white text-[10px] font-black">▶</span></a>
+                  ) : null}
+                  {org.socialLinks?.facebook ? (
+                    <a href={org.socialLinks.facebook} target="_blank" rel="noreferrer" className="w-7 h-7 rounded-md bg-[#1877F2] flex items-center justify-center text-white font-black text-xs">f</a>
+                  ) : null}
+                  {org.socialLinks?.tiktok ? (
+                    <a href={org.socialLinks.tiktok} target="_blank" rel="noreferrer" className="w-7 h-7 rounded-md bg-black border border-white/10 flex items-center justify-center"><Music className="w-3 h-3 text-white" /></a>
+                  ) : null}
+                  {!org.socialLinks?.youtube && !org.socialLinks?.facebook && !org.socialLinks?.tiktok ? (
+                    <div className="flex gap-1.5 opacity-30">
+                      <div className="w-7 h-7 rounded-md bg-[#2a2a2a] flex items-center justify-center"><span className="text-white text-[8px]">▶</span></div>
+                      <div className="w-7 h-7 rounded-md bg-[#2a2a2a] flex items-center justify-center text-white text-[10px]">f</div>
+                      <div className="w-7 h-7 rounded-md bg-[#2a2a2a] flex items-center justify-center"><Music className="w-3 h-3" /></div>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-white/60">
+                  <Phone className="w-3 h-3 text-white/40" />
+                  <span>{org.phone || '—'}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="hidden md:flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleOpenEdit(org)}
+                    className="p-2 rounded-lg bg-[#222222] border border-[#333333] hover:bg-[#2a2a2a] text-[#ededed] transition-colors"
+                    title="Edit Organization"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setDeletingOrg(org)}
+                    className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                    title="Delete Organization"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/25 hidden sm:block" />
+                <div className="flex md:hidden gap-1">
+                  <button onClick={() => handleOpenEdit(org)} className="p-1.5 rounded bg-[#222] border border-[#333]"><Edit2 className="w-3 h-3" /></button>
+                </div>
               </div>
             </div>
           ))}
@@ -223,7 +292,7 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
       {/* CREATE / EDIT MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-[#1c1c1c] border border-[#282828] rounded max-w-md w-full p-6 shadow-2xl relative text-[#ededed]">
+          <div className="bg-[#1c1c1c] border border-[#282828] rounded max-w-lg w-full p-6 shadow-2xl relative text-[#ededed] max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => {
                 setIsModalOpen(false);
@@ -238,7 +307,7 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
               <Building2 className="w-4 h-4 text-amber-400" />
               {editingOrg ? 'Edit Organization' : 'Add New Organization'}
             </h3>
-            <p className="text-[11px] text-[#888888] mb-6 font-mono">Required: name; Optional: avatar, description</p>
+            <p className="text-[11px] text-[#888888] mb-6 font-mono">Required: name • Phone & socials for mobile Owners list</p>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
@@ -255,22 +324,30 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-[#ededed] font-medium mb-1 font-mono">
-                  Avatar File Upload (Multer)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                  className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-1.5 text-[#ededed] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#3ecf8e] file:text-black hover:file:bg-[#34b27b]"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#ededed] font-medium mb-1 font-mono">Phone</label>
+                  <input
+                    type="tel"
+                    placeholder="+95 9 --- --- ---"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#ededed] font-medium mb-1 font-mono">Avatar File Upload</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                    className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-1.5 text-[#ededed] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#3ecf8e] file:text-black hover:file:bg-[#34b27b]"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-[#ededed] font-medium mb-1 font-mono">
-                  Or Avatar Object Key String
-                </label>
+                <label className="block text-[#ededed] font-medium mb-1 font-mono">Or Avatar Object Key String</label>
                 <input
                   type="text"
                   placeholder="e.g. org/avatar.jpg"
@@ -278,6 +355,21 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
                   onChange={(e) => setAvatarUrlString(e.target.value)}
                   className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-[#ededed] font-medium mb-1 font-mono flex items-center gap-1.5"><span className="w-5 h-5 rounded bg-[#FF0000] text-white grid place-items-center text-[9px]">▶</span> YouTube URL</label>
+                  <input type="url" placeholder="https://youtube.com/@..." value={youtube} onChange={(e) => setYoutube(e.target.value)} className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]" />
+                </div>
+                <div>
+                  <label className="block text-[#ededed] font-medium mb-1 font-mono flex items-center gap-1.5"><span className="w-5 h-5 rounded bg-[#1877F2] text-white grid place-items-center font-black text-[11px]">f</span> Facebook URL</label>
+                  <input type="url" placeholder="https://facebook.com/..." value={facebook} onChange={(e) => setFacebook(e.target.value)} className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]" />
+                </div>
+                <div>
+                  <label className="block text-[#ededed] font-medium mb-1 font-mono flex items-center gap-1.5"><span className="w-5 h-5 rounded bg-black border border-white/10 grid place-items-center"><Music className="w-3 h-3 text-white" /></span> TikTok URL</label>
+                  <input type="url" placeholder="https://tiktok.com/@..." value={tiktok} onChange={(e) => setTiktok(e.target.value)} className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]" />
+                </div>
               </div>
 
               <div>

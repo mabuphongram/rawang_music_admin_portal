@@ -37,11 +37,22 @@ export interface Track {
   updatedAt: string;
 }
 
+export interface SocialLinks {
+  youtube?: string;
+  facebook?: string;
+  tiktok?: string;
+}
+
 export interface Singer {
   id: string;
   name: string;
   avatarUrl?: string;
   description?: string;
+  phone?: string;
+  socialLinks?: SocialLinks;
+  // computed stats from backend aggregation
+  albumCount?: number;
+  trackCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +62,10 @@ export interface Organization {
   name: string;
   avatarUrl?: string;
   description?: string;
+  phone?: string;
+  socialLinks?: SocialLinks;
+  albumCount?: number;
+  trackCount?: number;
   createdAt: string;
   updatedAt: string;
 }
