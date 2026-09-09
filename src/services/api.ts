@@ -1,4 +1,4 @@
-import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardStats } from '../types';
+import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardStats, User, SubscriptionPlan, HeroSlide } from '../types';
 
 // Default configuration getters
 export function getApiBaseUrl(): string {
@@ -187,7 +187,20 @@ export const api = {
   },
   deleteOrganization: (id: string) => request<void>(`/organizations/${id}`, { method: 'DELETE' }),
 
-  // PLAYLISTS
+  // HERO SLIDES (home carousel)
+  getHeroSlides: () => request<HeroSlide[]>('/hero-slides'),
+  getHeroSlide: (id: string) => request<HeroSlide>(`/hero-slides/${id}`),
+  createHeroSlide: (formData: FormData | Record<string, unknown>) => {
+    const body = formData instanceof FormData ? formData : JSON.stringify(formData);
+    return request<HeroSlide>('/hero-slides', { method: 'POST', body });
+  },
+  updateHeroSlide: (id: string, formData: FormData | Record<string, unknown>) => {
+    const body = formData instanceof FormData ? formData : JSON.stringify(formData);
+    return request<HeroSlide>(`/hero-slides/${id}`, { method: 'PUT', body });
+  },
+  deleteHeroSlide: (id: string) => request<void>(`/hero-slides/${id}`, { method: 'DELETE' }),
+
+  // PLAYLISTS (legacy - discarded in Flutter offline, kept for mock compatibility)
   getPlaylists: () => request<Playlist[]>('/playlists'),
   createPlaylist: (payload: Partial<Playlist>) =>
     request<Playlist>('/playlists', { method: 'POST', body: JSON.stringify(payload) }),
@@ -201,6 +214,18 @@ export const api = {
   removeTrackFromPlaylist: (playlistId: string, trackId: string) =>
     request<Playlist>(`/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' }),
 
+  // USERS - manual subscription (1m/3m/1y) after free 4y tier
+  getUsers: (search?: string) => {
+    const q = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request<User[]>(`/users${q}`);
+  },
+  getUser: (id: string) => request<User>(`/users/${id}`),
+  updateUserSubscription: (id: string, payload: { plan: SubscriptionPlan; amount?: number }) =>
+    request<User>(`/users/${id}/subscription`, { method: 'PUT', body: JSON.stringify(payload) }),
+  resetUserPassword: (id: string) =>
+    request<{ message: string; tempPassword: string }>(`/users/${id}/reset-password`, { method: 'POST' }),
+  deleteUser: (id: string) => request<void>(`/users/${id}`, { method: 'DELETE' }),
+
   // CHAT
   getChatMessages: () => request<ChatMessage[]>('/chat/messages'),
   sendChatMessage: (payload: Partial<ChatMessage>) =>
@@ -208,13 +233,14 @@ export const api = {
 
   // DASHBOARD STATS CALCULATOR
   getDashboardStats: async (): Promise<DashboardStats> => {
-    const [albRes, trkRes, sngRes, orgRes, plRes, chatRes] = await Promise.allSettled([
+    const [albRes, trkRes, sngRes, orgRes, plRes, chatRes, usrRes] = await Promise.allSettled([
       api.getAlbums(),
       api.getTracks(),
       api.getSingers(),
       api.getOrganizations(),
       api.getPlaylists(),
       api.getChatMessages(),
+      api.getUsers().catch(() => [] as any),
     ]);
 
     const alb = albRes.status === 'fulfilled' ? albRes.value : [];
@@ -223,8 +249,10 @@ export const api = {
     const org = orgRes.status === 'fulfilled' ? orgRes.value : [];
     const pl = plRes.status === 'fulfilled' ? plRes.value : [];
     const chat = chatRes.status === 'fulfilled' ? chatRes.value : [];
+    const usr = usrRes.status === 'fulfilled' ? (usrRes.value as any[]) : [];
 
     const totalPlayCount = trk.reduce((acc, t) => acc + (t.playCount || 0), 0);
+    const activeSubs = (usr as any[]).filter((u: any) => u.subscriptionStatus === 'active' && new Date(u.subscriptionExpiresAt) > new Date()).length;
 
     return {
       totalAlbums: alb.length,
@@ -234,6 +262,8 @@ export const api = {
       totalPlaylists: pl.length,
       totalChatMessages: chat.length,
       totalPlayCount,
+      totalUsers: usr.length,
+      activeSubscriptions: activeSubs,
     };
   },
 };

@@ -41,9 +41,13 @@ export const Header: React.FC<HeaderProps> = ({
       title: 'Organizations',
       subtitle: 'Cultural heritage associations and music publishing bodies',
     },
-    playlists: {
-      title: 'Playlists',
-      subtitle: 'Curated track collections and track associations',
+    heroslides: {
+      title: 'Hero Slides',
+      subtitle: 'Home 16:9 carousel banners, texts, display seconds & order',
+    },
+    users: {
+      title: 'Users',
+      subtitle: 'Phone auth, manual 1m/3m/1y subscriptions, 1000 free 4y tier',
     },
     chat: {
       title: 'Broadcast Log',
@@ -78,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Action Controls */}
       <div className="flex items-center gap-2.5">
         {/* Search input with Supabase kbd badge */}
-        {['albums', 'tracks', 'singers', 'organizations', 'playlists', 'chat'].includes(activeTab) && (
+        {['albums', 'tracks', 'singers', 'organizations', 'heroslides', 'users', 'chat'].includes(activeTab) && (
           <div className="relative w-48 sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#666666]" />
             <input

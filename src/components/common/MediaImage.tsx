@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { resolveMediaUrl } from '../../services/api';
-import { Music, User, Building2, Disc } from 'lucide-react';
+import { Music, User, Building2, Disc, Images } from 'lucide-react';
 
 interface MediaImageProps {
   src?: string | null;
   alt: string;
-  type?: 'album' | 'singer' | 'organization' | 'track';
+  type?: 'album' | 'singer' | 'organization' | 'track' | 'hero';
   className?: string;
 }
 
@@ -29,6 +29,7 @@ export const MediaImage: React.FC<MediaImageProps> = ({
         {type === 'organization' && <Building2 className={iconClass} />}
         {type === 'album' && <Disc className={iconClass} />}
         {type === 'track' && <Music className={iconClass} />}
+        {type === 'hero' && <Images className={iconClass} />}
       </div>
     );
   }

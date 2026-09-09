@@ -192,6 +192,64 @@ let chatMessages = [
   },
 ];
 
+// USERS - matches Flutter UserEntity + backend User.js (phone+password JWT, manual 1m/3m/1y)
+let users: any[] = [
+  {
+    id: '66b1a2f00000000000000501',
+    phone: '09954395321',
+    email: 'mabuphongram171@gmail.com',
+    name: 'MB Pongram',
+    avatarUrl: '',
+    role: 'user',
+    subscriptionPlan: 'free',
+    subscriptionStatus: 'active',
+    subscriptionExpiresAt: new Date(Date.now() + 4 * 365 * 86400000).toISOString(),
+    subscriptionStartedAt: new Date().toISOString(),
+    lastPaymentAt: null,
+    lastPaymentAmount: null,
+    mustChangePassword: false,
+    isVerified: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '66b1a2f00000000000000502',
+    phone: '09911122233',
+    email: null,
+    name: 'Seng Mai',
+    avatarUrl: '',
+    role: 'user',
+    subscriptionPlan: 'one_month',
+    subscriptionStatus: 'active',
+    subscriptionExpiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+    subscriptionStartedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    lastPaymentAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    lastPaymentAmount: 5000,
+    mustChangePassword: false,
+    isVerified: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '66b1a2f00000000000000503',
+    phone: '09999988877',
+    email: 'artist@rawang.test',
+    name: 'Khar Lu',
+    avatarUrl: 'singer/avatar_khar_lu.jpg',
+    role: 'artist',
+    subscriptionPlan: 'free',
+    subscriptionStatus: 'active',
+    subscriptionExpiresAt: new Date(Date.now() + 4 * 365 * 86400000).toISOString(),
+    subscriptionStartedAt: new Date().toISOString(),
+    lastPaymentAt: null,
+    lastPaymentAmount: null,
+    mustChangePassword: false,
+    isVerified: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 // Health Check (outside /api)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -520,6 +578,64 @@ app.post('/api/chat/messages', (req, res) => {
   };
   chatMessages.push(newMsg);
   res.status(201).json(newMsg);
+});
+
+// USERS - manual subscription management (1000 users, free 4y -> 1m/3m/1y)
+app.get('/api/users', (req, res) => {
+  const { search } = req.query as any;
+  let result = [...users];
+  if (search) {
+    const term = String(search).toLowerCase();
+    result = result.filter((u) => u.phone.includes(term) || u.name.toLowerCase().includes(term) || (u.email || '').toLowerCase().includes(term));
+  }
+  result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json(result);
+});
+
+app.get('/api/users/:id', (req, res) => {
+  const user = users.find((u) => u.id === req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json(user);
+});
+
+app.put('/api/users/:id/subscription', (req, res) => {
+  const user = users.find((u) => u.id === req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const { plan, amount } = req.body as { plan: string; amount?: number };
+  const allowed = ['free', 'one_month', 'three_months', 'one_year'];
+  if (!allowed.includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+  const now = new Date();
+  let expires = new Date(user.subscriptionExpiresAt);
+  // if expired, start from now, else extend from current expiry
+  const base = expires > now ? expires : now;
+  if (plan === 'free') expires = new Date(now.getTime() + 4 * 365 * 86400000);
+  else if (plan === 'one_month') expires = new Date(base.getTime() + 30 * 86400000);
+  else if (plan === 'three_months') expires = new Date(base.getTime() + 90 * 86400000);
+  else if (plan === 'one_year') expires = new Date(base.getTime() + 365 * 86400000);
+  user.subscriptionPlan = plan;
+  user.subscriptionStatus = 'active';
+  user.subscriptionExpiresAt = expires.toISOString();
+  user.subscriptionStartedAt = now.toISOString();
+  user.lastPaymentAt = now.toISOString();
+  user.lastPaymentAmount = amount ?? null;
+  user.updatedAt = now.toISOString();
+  res.json(user);
+});
+
+app.post('/api/users/:id/reset-password', (req, res) => {
+  const user = users.find((u) => u.id === req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
+  user.mustChangePassword = true;
+  user.updatedAt = new Date().toISOString();
+  res.json({ message: 'Password reset to temp, user must change on next login', tempPassword });
+});
+
+app.delete('/api/users/:id', (req, res) => {
+  const idx = users.findIndex((u) => u.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'User not found' });
+  users.splice(idx, 1);
+  res.status(204).send();
 });
 
 // LEGACY UPLOADS

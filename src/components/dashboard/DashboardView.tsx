@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Album, Track, Singer, Organization, Playlist } from '../../types';
+import { Album, Track, Singer, Organization, Playlist, User } from '../../types';
 import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import { MediaImage } from '../common/MediaImage';
@@ -46,6 +46,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [singers, setSingers] = useState<Singer[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -53,12 +54,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [a, t, s, o, p] = await Promise.all([
+        const [a, t, s, o, p, u] = await Promise.all([
           api.getAlbums(),
           api.getTracks(),
           api.getSingers(),
           api.getOrganizations(),
-          api.getPlaylists(),
+          api.getPlaylists().catch(() => []),
+          api.getUsers().catch(() => []),
         ]);
         if (isMounted) {
           setAlbums(a || []);
@@ -66,6 +68,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           setSingers(s || []);
           setOrganizations(o || []);
           setPlaylists(p || []);
+          setUsers((u as User[]) || []);
         }
       } catch (err) {
         console.error('Dashboard fetch error:', err);
@@ -178,19 +181,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <p className="text-[10px] text-[#888888] mt-2 font-mono">Entities</p>
         </div>
 
-        {/* Playlists */}
+        {/* Users - replaces Playlists (discarded in Flutter) */}
         <div
-          onClick={() => setActiveTab('playlists')}
+          onClick={() => setActiveTab('users')}
           className="bg-[#1c1c1c] p-4 rounded border border-[#282828] hover:border-[#3e3e3e] cursor-pointer transition-all group"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono text-[#888888] uppercase">Playlists</span>
+            <span className="text-[11px] font-mono text-[#888888] uppercase">Users</span>
             <div className="w-6 h-6 rounded bg-[#3ecf8e]/10 border border-[#3ecf8e]/20 text-[#3ecf8e] flex items-center justify-center group-hover:bg-[#3ecf8e]/20 transition-colors">
-              <ListMusic className="w-3.5 h-3.5" />
+              <UserCheck className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold font-mono text-[#ededed]">{playlists.length}</div>
-          <p className="text-[10px] text-[#888888] mt-2 font-mono">Curated Sets</p>
+          <div className="text-2xl font-bold font-mono text-white">{users.length}</div>
+          <p className="text-[10px] text-[#3ecf8e] mt-2 font-mono">{users.filter((u) => u.subscriptionPlan !== 'free').length} Paid • {users.filter((u) => u.subscriptionPlan === 'free').length} Free 4y</p>
         </div>
 
         {/* Total Plays */}

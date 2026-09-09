@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Album, Track, Singer, Organization, Playlist } from '../../types';
+import { Album, Track, Singer, Organization, Playlist, User } from '../../types';
 import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import {
@@ -36,24 +36,27 @@ export const ReportsView: React.FC = () => {
   const [singers, setSingers] = useState<Singer[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadAllData = async () => {
       setIsLoading(true);
       try {
-        const [a, t, s, o, p] = await Promise.all([
+        const [a, t, s, o, p, u] = await Promise.all([
           api.getAlbums(),
           api.getTracks(),
           api.getSingers(),
           api.getOrganizations(),
-          api.getPlaylists(),
+          api.getPlaylists().catch(() => []),
+          api.getUsers().catch(() => []),
         ]);
         setAlbums(a || []);
         setTracks(t || []);
         setSingers(s || []);
         setOrganizations(o || []);
         setPlaylists(p || []);
+        setUsers((u as User[]) || []);
       } catch (err: any) {
         addToast('error', `Reports data fetch error: ${err.message}`);
       } finally {

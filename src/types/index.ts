@@ -81,8 +81,20 @@ export interface Playlist {
   updatedAt?: string;
 }
 
-export interface ChatMessage {
-  id?: string;
+export interface HeroSlide {
+  id: string;
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  durationSeconds: number;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {  id?: string;
   senderName: string;
   message?: string;
   timestamp?: number;
@@ -90,6 +102,29 @@ export interface ChatMessage {
   attachedTrackTitle?: string;
   isUser?: boolean;
   createdAt?: string;
+}
+
+export type UserRole = 'user' | 'artist' | 'admin';
+export type SubscriptionPlan = 'free' | 'one_month' | 'three_months' | 'one_year';
+export type SubscriptionStatus = 'active' | 'expired' | 'pending';
+
+export interface User {
+  id: string;
+  phone: string;
+  email?: string | null;
+  name: string;
+  avatarUrl?: string;
+  role: UserRole;
+  subscriptionPlan: SubscriptionPlan;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionExpiresAt: string;
+  subscriptionStartedAt: string;
+  lastPaymentAt?: string | null;
+  lastPaymentAmount?: number | null;
+  mustChangePassword?: boolean;
+  isVerified?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DashboardStats {
@@ -100,4 +135,6 @@ export interface DashboardStats {
   totalPlaylists: number;
   totalChatMessages: number;
   totalPlayCount: number;
+  totalUsers?: number;
+  activeSubscriptions?: number;
 }

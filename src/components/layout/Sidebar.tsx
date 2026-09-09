@@ -8,11 +8,13 @@ import {
   Building2,
   ListMusic,
   MessageSquare,
+  Images,
   BarChart3,
   Settings,
   Sparkles,
   Database,
   Terminal,
+  Users,
 } from 'lucide-react';
 
 export type NavTab =
@@ -21,7 +23,8 @@ export type NavTab =
   | 'tracks'
   | 'singers'
   | 'organizations'
-  | 'playlists'
+  | 'heroslides'
+  | 'users'
   | 'chat'
   | 'reports'
   | 'settings';
@@ -48,7 +51,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, stats
     { id: 'tracks' as NavTab, label: 'Tracks', icon: Music, count: stats?.totalTracks },
     { id: 'singers' as NavTab, label: 'Singers', icon: UserCheck, count: stats?.totalSingers },
     { id: 'organizations' as NavTab, label: 'Organizations', icon: Building2, count: stats?.totalOrganizations },
-    { id: 'playlists' as NavTab, label: 'Playlists', icon: ListMusic, count: stats?.totalPlaylists },
+    { id: 'heroslides' as NavTab, label: 'Hero Slides', icon: Images },
+    { id: 'users' as NavTab, label: 'Users', icon: Users },
     { id: 'chat' as NavTab, label: 'Broadcast Log', icon: MessageSquare, count: stats?.totalChatMessages },
     { id: 'reports' as NavTab, label: 'Analytics', icon: BarChart3 },
     { id: 'settings' as NavTab, label: 'Project Settings', icon: Settings },

@@ -7,7 +7,8 @@ import { AlbumsView } from './components/albums/AlbumsView';
 import { TracksView } from './components/tracks/TracksView';
 import { SingersView } from './components/singers/SingersView';
 import { OrganizationsView } from './components/organizations/OrganizationsView';
-import { PlaylistsView } from './components/playlists/PlaylistsView';
+import { HeroSlidesView } from './components/heroslides/HeroSlidesView';
+import { UsersView } from './components/users/UsersView';
 import { ChatView } from './components/chat/ChatView';
 import { ReportsView } from './components/reports/ReportsView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -24,16 +25,17 @@ export function AdminApp() {
   // Trigger create modals from header or dashboard
   const [createModalTrigger, setCreateModalTrigger] = useState<{
     open: boolean;
-    type?: 'album' | 'track' | 'singer' | 'organization' | 'playlist';
+    type?: 'album' | 'track' | 'singer' | 'organization' | 'heroslide';
   }>({ open: false });
 
-  const handleOpenCreateModal = (type?: 'album' | 'track' | 'singer' | 'organization' | 'playlist') => {
+  const handleOpenCreateModal = (type?: 'album' | 'track' | 'singer' | 'organization' | 'heroslide' | 'users') => {
     if (type) {
       if (type === 'album') setActiveTab('albums');
       else if (type === 'track') setActiveTab('tracks');
       else if (type === 'singer') setActiveTab('singers');
       else if (type === 'organization') setActiveTab('organizations');
-      else if (type === 'playlist') setActiveTab('playlists');
+      else if (type === 'heroslide') setActiveTab('heroslides');
+      else if (type === 'users') setActiveTab('users');
     }
     setCreateModalTrigger({ open: true, type });
   };
@@ -56,8 +58,8 @@ export function AdminApp() {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           onOpenCreateModal={
-            ['albums', 'tracks', 'singers', 'organizations', 'playlists'].includes(activeTab)
-              ? () => handleOpenCreateModal(activeTab as any)
+            ['albums', 'tracks', 'singers', 'organizations', 'heroslides'].includes(activeTab)
+              ? () => handleOpenCreateModal(activeTab === 'heroslides' ? 'heroslide' : (activeTab as any))
               : undefined
           }
         />
@@ -104,13 +106,15 @@ export function AdminApp() {
             />
           )}
 
-          {activeTab === 'playlists' && (
-            <PlaylistsView
+          {activeTab === 'heroslides' && (
+            <HeroSlidesView
               searchTerm={searchTerm}
-              isCreateOpen={createModalTrigger.open && createModalTrigger.type === 'playlist'}
+              isCreateOpen={createModalTrigger.open && createModalTrigger.type === 'heroslide'}
               onCloseCreate={() => setCreateModalTrigger({ open: false })}
             />
           )}
+
+          {activeTab === 'users' && <UsersView searchTerm={searchTerm} />}
 
           {activeTab === 'chat' && <ChatView searchTerm={searchTerm} />}
 
