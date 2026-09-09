@@ -158,6 +158,9 @@ let tracks = [
   },
 ];
 
+// Backfill albumIds mirror for seed mock tracks
+tracks = tracks.map((t: any) => ({ ...t, albumIds: [t.albumId] }));
+
 let playlists = [
   {
     id: '66b1a2f00000000000000301',
@@ -324,11 +327,36 @@ app.delete('/api/albums/:id', (req, res) => {
 });
 
 // TRACKS
+// Many-to-many: a track carries albumIds[] with albumId as primary mirror.
+function trackAlbumIds(t: any): string[] {
+  if (Array.isArray(t.albumIds) && t.albumIds.length > 0) return t.albumIds.map(String);
+  if (t.albumId) return [String(t.albumId)];
+  return [];
+}
+function parseAlbumIdsField(value: any, fallbackId?: string): string[] {
+  let ids: any = value;
+  if (typeof ids === 'string') {
+    try {
+      ids = JSON.parse(ids);
+    } catch {
+      ids = [ids];
+    }
+  }
+  if (Array.isArray(ids) && ids.length > 0) return ids.map(String);
+  if (fallbackId) return [String(fallbackId)];
+  return [];
+}
+function recountAlbumTracks(albumId: string) {
+  const alb = albums.find((a) => a.id === albumId);
+  if (alb) {
+    alb.trackCount = tracks.filter((t) => trackAlbumIds(t).includes(albumId)).length;
+  }
+}
 app.get('/api/tracks', (req, res) => {
   const { albumId } = req.query;
   let result = [...tracks];
   if (albumId) {
-    result = result.filter((t) => t.albumId === albumId);
+    result = result.filter((t) => trackAlbumIds(t).includes(String(albumId)));
   }
   result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   res.json(result);
@@ -341,8 +369,9 @@ app.get('/api/tracks/:id', (req, res) => {
 });
 
 app.post('/api/tracks', (req, res) => {
-  const { albumId, title, artistName, albumName, ownerType, durationSeconds, audioUrl, rawangTitle, lyrics, genre, playCount, hasKaraoke, karaokeAudioUrl } = req.body;
-  if (!albumId || !title || !artistName || !albumName || !ownerType || !durationSeconds) {
+  const { albumId, albumIds, title, artistName, albumName, ownerType, durationSeconds, audioUrl, rawangTitle, lyrics, genre, playCount, hasKaraoke, karaokeAudioUrl } = req.body;
+  const resolvedAlbumIds = parseAlbumIdsField(albumIds, albumId);
+  if (resolvedAlbumIds.length === 0 || !title || !artistName || !albumName || !ownerType || !durationSeconds) {
     return res.status(400).json({ error: 'Missing required track fields' });
   }
 
@@ -350,14 +379,15 @@ app.post('/api/tracks', (req, res) => {
   const finalHasKaraoke = Boolean(hasKaraoke || karaokeAudioUrl);
   const newTrack = {
     id,
-    albumId,
+    albumIds: resolvedAlbumIds,
+    albumId: resolvedAlbumIds[0],
     title,
     rawangTitle: rawangTitle || '',
     artistName,
     albumName,
     ownerType,
     durationSeconds: Number(durationSeconds),
-    audioUrl: audioUrl || `albums/${albumId}/tracks/${id}.mp3`,
+    audioUrl: audioUrl || `albums/${resolvedAlbumIds[0]}/tracks/${id}.mp3`,
     lyrics: lyrics || '',
     genre: genre || 'Folk',
     playCount: Number(playCount || 0),
@@ -368,11 +398,8 @@ app.post('/api/tracks', (req, res) => {
   };
   tracks.push(newTrack);
 
-  // Update album trackCount
-  const alb = albums.find((a) => a.id === albumId);
-  if (alb) {
-    alb.trackCount = tracks.filter((t) => t.albumId === albumId).length;
-  }
+  // Update album trackCounts
+  resolvedAlbumIds.forEach(recountAlbumTracks);
 
   res.status(201).json(newTrack);
 });
@@ -390,6 +417,10 @@ app.put('/api/tracks/:id', (req, res) => {
     hasKaraoke: req.body.karaokeAudioUrl ? true : req.body.hasKaraoke !== undefined ? Boolean(req.body.hasKaraoke) : existing.hasKaraoke,
     updatedAt: new Date().toISOString(),
   };
+  if (req.body.albumIds !== undefined || req.body.albumId !== undefined) {
+    updated.albumIds = parseAlbumIdsField(req.body.albumIds, req.body.albumId || existing.albumId);
+    updated.albumId = updated.albumIds[0] || existing.albumId;
+  }
   tracks[index] = updated;
 
   res.json(updated);
@@ -399,10 +430,7 @@ app.delete('/api/tracks/:id', (req, res) => {
   const trk = tracks.find((t) => t.id === req.params.id);
   tracks = tracks.filter((t) => t.id !== req.params.id);
   if (trk) {
-    const alb = albums.find((a) => a.id === trk.albumId);
-    if (alb) {
-      alb.trackCount = tracks.filter((t) => t.albumId === trk.albumId).length;
-    }
+    trackAlbumIds(trk).forEach(recountAlbumTracks);
   }
   res.status(204).send();
 });

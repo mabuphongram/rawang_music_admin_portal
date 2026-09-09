@@ -19,7 +19,9 @@ export interface Album {
 
 export interface Track {
   id: string;
-  albumId: string;
+  albumIds: string[];
+  /** Primary album (first of albumIds) — kept for backward compat. */
+  albumId?: string;
   title: string;
   rawangTitle?: string;
   artistName: string;

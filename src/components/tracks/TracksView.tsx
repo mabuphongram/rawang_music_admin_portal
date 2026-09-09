@@ -46,7 +46,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
-  const [albumId, setAlbumId] = useState('');
+  const [albumIds, setAlbumIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [rawangTitle, setRawangTitle] = useState('');
   const [artistName, setArtistName] = useState('');
@@ -125,7 +125,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
   const handleOpenCreate = () => {
     setEditingTrack(null);
     const initialAlbum = albums.find((a) => a.id === filterAlbumId) || albums[0];
-    setAlbumId(initialAlbum?.id || '');
+    setAlbumIds(initialAlbum ? [initialAlbum.id] : []);
     setAlbumName(initialAlbum?.title || '');
     setArtistName(initialAlbum?.ownerName || '');
     setOwnerType(initialAlbum?.ownerType || 'singer');
@@ -147,7 +147,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
 
   const handleOpenEdit = (track: Track) => {
     setEditingTrack(track);
-    setAlbumId(track.albumId);
+    setAlbumIds(track.albumIds?.length ? track.albumIds : (track.albumId ? [track.albumId] : []));
     setAlbumName(track.albumName);
     setArtistName(track.artistName);
     setOwnerType(track.ownerType);
@@ -168,20 +168,26 @@ export const TracksView: React.FC<TracksViewProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleAlbumSelectionChange = (selectedId: string) => {
-    setAlbumId(selectedId);
-    const alb = albums.find((a) => a.id === selectedId);
-    if (alb) {
-      setAlbumName(alb.title);
-      setArtistName(alb.ownerName);
-      setOwnerType(alb.ownerType);
-    }
+  const handleAlbumToggle = (selectedId: string) => {
+    setAlbumIds((prev) => {
+      const next = prev.includes(selectedId)
+        ? prev.filter((id) => id !== selectedId)
+        : [...prev, selectedId];
+      // Autofill display fields from the first selected album
+      const first = albums.find((a) => a.id === next[0]);
+      if (first) {
+        setAlbumName(first.title);
+        setArtistName(first.ownerName);
+        setOwnerType(first.ownerType);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!albumId || !title.trim() || !artistName.trim() || !albumName.trim()) {
-      addToast('warning', 'Please fill out all required track fields.');
+    if (albumIds.length === 0 || !title.trim() || !artistName.trim() || !albumName.trim()) {
+      addToast('warning', 'Please select at least one album and fill out all required track fields.');
       return;
     }
 
@@ -191,7 +197,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
 
       if (audioFile || karaokeFile) {
         const fd = new FormData();
-        fd.append('albumId', albumId);
+        fd.append('albumIds', JSON.stringify(albumIds));
         fd.append('title', title.trim());
         if (rawangTitle) fd.append('rawangTitle', rawangTitle.trim());
         fd.append('artistName', artistName.trim());
@@ -219,7 +225,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
         bodyData = fd;
       } else {
         bodyData = {
-          albumId,
+          albumIds,
           title: title.trim(),
           rawangTitle: rawangTitle.trim(),
           artistName: artistName.trim(),
@@ -227,7 +233,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
           albumName: albumName.trim(),
           ownerType,
           durationSeconds: Number(durationSeconds),
-          audioUrl: audioUrlString || `albums/${albumId}/tracks/track.mp3`,
+          audioUrl: audioUrlString || `albums/${albumIds[0]}/tracks/track.mp3`,
           lyrics: lyrics.trim(),
           genre,
           playCount: Number(playCount),
@@ -402,7 +408,14 @@ export const TracksView: React.FC<TracksViewProps> = ({
 
                     <td className="px-4 py-2.5">
                       <div className="text-[#ededed] font-medium">{track.artistName}</div>
-                      <div className="text-[10px] text-[#666666] font-mono">{track.albumName}</div>
+                      <div className="text-[10px] text-[#666666] font-mono">
+                        {track.albumName}
+                        {(track.albumIds?.length || 0) > 1 && (
+                          <span className="ml-1.5 px-1.5 py-0.2 rounded bg-[#3ecf8e]/10 border border-[#3ecf8e]/20 text-[#3ecf8e] font-bold">
+                            +{track.albumIds.length - 1} albums
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-4 py-2.5">
@@ -489,28 +502,36 @@ export const TracksView: React.FC<TracksViewProps> = ({
               {editingTrack ? 'Edit Track' : 'Add New Track'}
             </h3>
             <p className="text-[11px] text-[#888888] mb-6 font-mono">
-              Schema: albumId, title, artistName, albumName, ownerType, durationSeconds, audioUrl
+              Schema: albumIds[], title, artistName, albumName, ownerType, durationSeconds, audioUrl
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              {/* Album Selection */}
+              {/* Album Selection (multi) */}
               <div>
                 <label className="block text-[#ededed] font-medium mb-1 font-mono">
-                  Album <span className="text-red-400">*</span>
+                  Albums <span className="text-red-400">*</span>
+                  <span className="ml-2 text-[10px] text-[#666666] font-normal">
+                    {albumIds.length} selected — tick all albums this song belongs to
+                  </span>
                 </label>
-                <select
-                  required
-                  value={albumId}
-                  onChange={(e) => handleAlbumSelectionChange(e.target.value)}
-                  className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
-                >
-                  <option value="">-- Choose Target Album --</option>
+                <div className="max-h-40 overflow-y-auto bg-[#141414] border border-[#282828] rounded px-3 py-2 space-y-1.5">
+                  {albums.length === 0 && (
+                    <p className="text-[#666666]">No albums available.</p>
+                  )}
                   {albums.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.title} ({a.ownerName})
-                    </option>
+                    <label key={a.id} className="flex items-center gap-2 cursor-pointer hover:text-white text-[#ededed]">
+                      <input
+                        type="checkbox"
+                        checked={albumIds.includes(a.id)}
+                        onChange={() => handleAlbumToggle(a.id)}
+                        className="w-4 h-4 accent-[#3ecf8e] shrink-0"
+                      />
+                      <span className="truncate">
+                        {a.title} <span className="text-[#666666] font-mono">({a.ownerName})</span>
+                      </span>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Title & Rawang Title */}
@@ -705,6 +726,19 @@ export const TracksView: React.FC<TracksViewProps> = ({
                   accept="audio/*"
                   onChange={(e) => setKaraokeFile(e.target.files?.[0] || null)}
                   className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-1.5 text-[#ededed] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#222222] file:text-[#3ecf8e] file:border file:border-[#333333]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#ededed] font-medium mb-1 font-mono">
+                  Or Karaoke URL / MinIO Object Key String
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. albums/albumId/tracks/song-karaoke.mp3 or https://..."
+                  value={karaokeAudioUrlString}
+                  onChange={(e) => setKaraokeAudioUrlString(e.target.value)}
+                  className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]"
                 />
               </div>
 
