@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BackendProvider } from './context/BackendContext';
+import { PresenceProvider } from './context/PresenceContext';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DashboardView } from './components/dashboard/DashboardView';
+import { LiveUsersView } from './components/live/LiveUsersView';
 import { AlbumsView } from './components/albums/AlbumsView';
 import { TracksView } from './components/tracks/TracksView';
 import { SingersView } from './components/singers/SingersView';
 import { OrganizationsView } from './components/organizations/OrganizationsView';
 import { HeroSlidesView } from './components/heroslides/HeroSlidesView';
+import { VideosView } from './components/videos/VideosView';
+import { ContributionsView } from './components/contributions/ContributionsView';
+import { OwnerRequestsView } from './components/requests/OwnerRequestsView';
+import { OwnershipView } from './components/ownership/OwnershipView';
 import { UsersView } from './components/users/UsersView';
 import { ChatView } from './components/chat/ChatView';
 import { ReportsView } from './components/reports/ReportsView';
@@ -15,9 +21,38 @@ import { SettingsView } from './components/settings/SettingsView';
 import { GlobalAudioBar } from './components/common/GlobalAudioBar';
 import { ToastContainer } from './components/common/ToastContainer';
 
+const NAV_TABS: NavTab[] = [
+  'dashboard',
+  'live',
+  'albums',
+  'tracks',
+  'singers',
+  'organizations',
+  'heroslides',
+  'videos',
+  'contributions',
+  'requests',
+  'ownership',
+  'users',
+  'chat',
+  'reports',
+  'settings',
+];
+
+function tabFromHash(): NavTab {
+  const hash = window.location.hash.replace(/^#\/?/, '');
+  return NAV_TABS.includes(hash as NavTab) ? (hash as NavTab) : 'dashboard';
+}
+
 export function AdminApp() {
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<NavTab>(() => tabFromHash());
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (window.location.hash !== `#${activeTab}`) {
+      window.history.replaceState(null, '', `#${activeTab}`);
+    }
+  }, [activeTab]);
 
   // Selected album filter passed from AlbumsView to TracksView
   const [selectedAlbumForTracks, setSelectedAlbumForTracks] = useState<string | null>(null);
@@ -72,6 +107,8 @@ export function AdminApp() {
             />
           )}
 
+          {activeTab === 'live' && <LiveUsersView searchTerm={searchTerm} />}
+
           {activeTab === 'albums' && (
             <AlbumsView
               searchTerm={searchTerm}
@@ -114,6 +151,14 @@ export function AdminApp() {
             />
           )}
 
+          {activeTab === 'videos' && <VideosView searchTerm={searchTerm} />}
+
+          {activeTab === 'contributions' && <ContributionsView searchTerm={searchTerm} />}
+
+          {activeTab === 'requests' && <OwnerRequestsView searchTerm={searchTerm} />}
+
+          {activeTab === 'ownership' && <OwnershipView searchTerm={searchTerm} />}
+
           {activeTab === 'users' && <UsersView searchTerm={searchTerm} />}
 
           {activeTab === 'chat' && <ChatView searchTerm={searchTerm} />}
@@ -136,7 +181,9 @@ export function AdminApp() {
 export default function App() {
   return (
     <BackendProvider>
-      <AdminApp />
+      <PresenceProvider>
+        <AdminApp />
+      </PresenceProvider>
     </BackendProvider>
   );
 }

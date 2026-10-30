@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { User, SubscriptionPlan } from '../../types';
 import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
-import { Users, Search, Phone, Mail, Crown, Calendar, DollarSign, RefreshCw, Trash2, Shield, KeyRound, X, CheckCircle2 } from 'lucide-react';
+import { Users, Search, Phone, Mail, Crown, Calendar, DollarSign, RefreshCw, Trash2, Shield, KeyRound, X, CheckCircle2, Edit2 } from 'lucide-react';
 
 interface UsersViewProps { searchTerm: string; }
 
@@ -15,6 +15,14 @@ export const UsersView: React.FC<UsersViewProps> = ({ searchTerm }) => {
   const [plan, setPlan] = useState<SubscriptionPlan>('one_month');
   const [amount, setAmount] = useState<string>('5000');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Edit user modal
+  const [editing, setEditing] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<'user' | 'artist' | 'admin'>('user');
+  const [isEditSaving, setIsEditSaving] = useState(false);
 
   const combinedSearch = (searchTerm || localSearch).toLowerCase();
 
@@ -34,7 +42,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ searchTerm }) => {
     return () => clearTimeout(t);
   }, [combinedSearch]);
 
-  const planLabel = (p: string) => p === 'one_month' ? '1 Month' : p === 'three_months' ? '3 Months' : p === 'one_year' ? '1 Year' : 'Free 4Y';
+  const planLabel = (p: string) => p === 'one_month' ? '1 Month' : p === 'three_months' ? '3 Months' : p === 'one_year' ? '1 Year' : 'Free 3Y';
   const planColor = (p: string) => p === 'free' ? 'bg-[#3ecf8e]/10 text-[#3ecf8e] border-[#3ecf8e]/20' : p === 'one_month' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : p === 'three_months' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
   const statusDot = (u: User) => {
     const expired = new Date(u.subscriptionExpiresAt) < new Date() || u.subscriptionStatus === 'expired';
@@ -68,11 +76,40 @@ export const UsersView: React.FC<UsersViewProps> = ({ searchTerm }) => {
     try { await api.deleteUser(u.id); addToast('success', 'User deleted'); fetchUsers(); triggerRefresh(); } catch (e: any) { addToast('error', e.message); }
   };
 
+  const openEdit = (u: User) => {
+    setEditing(u);
+    setEditName(u.name);
+    setEditPhone(u.phone);
+    setEditEmail(u.email || '');
+    setEditRole(u.role);
+  };
+
+  const handleEditSave = async () => {
+    if (!editing) return;
+    if (!editName.trim() || !editPhone.trim()) {
+      addToast('warning', 'Name and phone are required.');
+      return;
+    }
+    setIsEditSaving(true);
+    try {
+      await api.updateUser(editing.id, {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim() ? editEmail.trim() : null,
+        role: editRole,
+      });
+      addToast('success', `${editName.trim()} updated.`);
+      setEditing(null);
+      triggerRefresh();
+      fetchUsers();
+    } catch (e: any) { addToast('error', e.message); } finally { setIsEditSaving(false); }
+  };
+
   return (
     <div className="p-6 space-y-6 text-[#ededed]">
       <div className="bg-[#1c1c1c] border border-[#282828] p-4 rounded flex flex-col sm:flex-row gap-4 justify-between">
         <div>
-          <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2"><Users className="w-4 h-4 text-[#3ecf8e]" /> Users & Subscriptions <span className="px-2 py-0.5 rounded bg-[#3ecf8e]/10 border border-[#3ecf8e]/20 text-[10px]">~1000 free 4y</span></h3>
+          <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2"><Users className="w-4 h-4 text-[#3ecf8e]" /> Users & Subscriptions <span className="px-2 py-0.5 rounded bg-[#3ecf8e]/10 border border-[#3ecf8e]/20 text-[10px]">~1000 free 2y</span></h3>
           <p className="text-xs text-[#888888] mt-1">Manual 1m/3m/1y activation after bank transfer - admin flips plan here</p>
         </div>
         <div className="flex items-center gap-2">
@@ -87,7 +124,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ searchTerm }) => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-[#1c1c1c] border border-[#282828] rounded p-3"><div className="text-[11px] font-mono text-[#888] uppercase">Total Users</div><div className="text-xl font-mono font-bold text-white">{users.length}</div><div className="text-[10px] text-[#3ecf8e]">~1000 target free tier</div></div>
         <div className="bg-[#1c1c1c] border border-[#282828] rounded p-3"><div className="text-[11px] font-mono text-[#888] uppercase">Active Subs</div><div className="text-xl font-mono font-bold text-white">{users.filter((u) => new Date(u.subscriptionExpiresAt) > new Date() && u.subscriptionStatus === 'active').length}</div><div className="text-[10px] text-[#666]">Paid 1m/3m/1y</div></div>
-        <div className="bg-[#1c1c1c] border border-[#282828] rounded p-3"><div className="text-[11px] font-mono text-[#888] uppercase">Free Tier</div><div className="text-xl font-mono font-bold text-white">{users.filter((u) => u.subscriptionPlan === 'free').length}</div><div className="text-[10px] text-[#888]">4y free</div></div>
+        <div className="bg-[#1c1c1c] border border-[#282828] rounded p-3"><div className="text-[11px] font-mono text-[#888] uppercase">Free Tier</div><div className="text-xl font-mono font-bold text-white">{users.filter((u) => u.subscriptionPlan === 'free').length}</div><div className="text-[10px] text-[#888]">2y free</div></div>
         <div className="bg-[#1c1c1c] border border-[#282828] rounded p-3"><div className="text-[11px] font-mono text-[#888] uppercase">Artists</div><div className="text-xl font-mono font-bold text-white">{users.filter((u) => u.role === 'artist').length}</div><div className="text-[10px] text-purple-400">Revenue share</div></div>
       </div>
 
@@ -114,6 +151,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ searchTerm }) => {
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setSelected(u)} title="Extend 1m/3m/1y" className="p-1.5 rounded bg-[#3ecf8e]/10 border border-[#3ecf8e]/20 text-[#3ecf8e] hover:bg-[#3ecf8e]/20"><Crown className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => openEdit(u)} title="Edit user" className="p-1.5 rounded bg-[#222] border border-[#333] text-[#ededed] hover:bg-[#2a2a2a]"><Edit2 className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleReset(u)} title="Reset password" className="p-1.5 rounded bg-[#222] border border-[#333] text-[#888] hover:text-white"><KeyRound className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleDelete(u)} title="Delete" className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
@@ -136,7 +174,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ searchTerm }) => {
               <div>
                 <label className="block font-mono font-bold text-white mb-1">Plan *</label>
                 <select value={plan} onChange={(e) => setPlan(e.target.value as any)} className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-white focus:outline-none focus:border-[#3ecf8e]">
-                  <option value="free">Free 4 years (reset)</option>
+                  <option value="free">Free 2 years (reset)</option>
                   <option value="one_month">1 Month (30d)</option>
                   <option value="three_months">3 Months (90d)</option>
                   <option value="one_year">1 Year (365d)</option>
@@ -150,6 +188,42 @@ export const UsersView: React.FC<UsersViewProps> = ({ searchTerm }) => {
               <div className="pt-3 border-t border-[#282828] flex justify-end gap-3">
                 <button onClick={() => setSelected(null)} className="px-4 py-2 rounded bg-[#222] border border-[#333] text-white">Cancel</button>
                 <button onClick={handleExtend} disabled={isSaving} className="px-4 py-2 rounded bg-[#3ecf8e] hover:bg-[#34b27b] text-black font-semibold flex items-center gap-2 disabled:opacity-50">{isSaving ? <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}Confirm</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#1c1c1c] border border-[#282828] rounded max-w-md w-full p-6 shadow-2xl relative">
+            <button onClick={() => setEditing(null)} className="absolute top-4 right-4 text-[#888] hover:text-white"><X className="w-5 h-5" /></button>
+            <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2"><Edit2 className="w-4 h-4 text-[#3ecf8e]" /> Edit User</h3>
+            <p className="text-xs text-[#888] mt-1">{editing.phone} • ID …{editing.id.slice(-6)}</p>
+            <div className="mt-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-mono font-bold text-white mb-1">Name *</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-white focus:outline-none focus:border-[#3ecf8e]" />
+              </div>
+              <div>
+                <label className="block font-mono font-bold text-white mb-1">Phone *</label>
+                <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-white font-mono focus:outline-none focus:border-[#3ecf8e]" />
+              </div>
+              <div>
+                <label className="block font-mono font-bold text-white mb-1">Email (optional)</label>
+                <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="—" className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-white placeholder-[#666] focus:outline-none focus:border-[#3ecf8e]" />
+              </div>
+              <div>
+                <label className="block font-mono font-bold text-white mb-1">Role</label>
+                <select value={editRole} onChange={(e) => setEditRole(e.target.value as any)} className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-white focus:outline-none focus:border-[#3ecf8e]">
+                  <option value="user">user (listener)</option>
+                  <option value="artist">artist (merchant)</option>
+                  <option value="admin">admin (full access)</option>
+                </select>
+              </div>
+              <div className="pt-3 border-t border-[#282828] flex justify-end gap-3">
+                <button onClick={() => setEditing(null)} className="px-4 py-2 rounded bg-[#222] border border-[#333] text-white">Cancel</button>
+                <button onClick={handleEditSave} disabled={isEditSaving} className="px-4 py-2 rounded bg-[#3ecf8e] hover:bg-[#34b27b] text-black font-semibold flex items-center gap-2 disabled:opacity-50">{isEditSaving ? <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}Save</button>
               </div>
             </div>
           </div>

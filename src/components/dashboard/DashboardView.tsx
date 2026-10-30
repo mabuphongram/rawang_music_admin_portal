@@ -193,7 +193,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold font-mono text-white">{users.length}</div>
-          <p className="text-[10px] text-[#3ecf8e] mt-2 font-mono">{users.filter((u) => u.subscriptionPlan !== 'free').length} Paid • {users.filter((u) => u.subscriptionPlan === 'free').length} Free 4y</p>
+          <p className="text-[10px] text-[#3ecf8e] mt-2 font-mono">{users.filter((u) => u.subscriptionPlan !== 'free').length} Paid • {users.filter((u) => u.subscriptionPlan === 'free').length} Free 2y</p>
         </div>
 
         {/* Total Plays */}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useBackend } from '../../context/BackendContext';
+import { usePresence } from '../../context/PresenceContext';
 import {
   LayoutDashboard,
   Disc,
@@ -9,21 +10,31 @@ import {
   ListMusic,
   MessageSquare,
   Images,
+  MonitorPlay,
+  Inbox,
+  UserPlus,
+  Link2,
   BarChart3,
   Settings,
   Sparkles,
   Database,
   Terminal,
   Users,
+  Radio,
 } from 'lucide-react';
 
 export type NavTab =
   | 'dashboard'
+  | 'live'
   | 'albums'
   | 'tracks'
   | 'singers'
   | 'organizations'
   | 'heroslides'
+  | 'videos'
+  | 'contributions'
+  | 'requests'
+  | 'ownership'
   | 'users'
   | 'chat'
   | 'reports'
@@ -44,14 +55,20 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, stats }) => {
   const { healthStatus, apiUrl } = useBackend();
+  const { count: liveCount } = usePresence();
 
   const navItems = [
     { id: 'dashboard' as NavTab, label: 'Overview', icon: LayoutDashboard },
+    { id: 'live' as NavTab, label: 'Live Users', icon: Radio, count: liveCount },
     { id: 'albums' as NavTab, label: 'Albums', icon: Disc, count: stats?.totalAlbums },
     { id: 'tracks' as NavTab, label: 'Tracks', icon: Music, count: stats?.totalTracks },
     { id: 'singers' as NavTab, label: 'Singers', icon: UserCheck, count: stats?.totalSingers },
     { id: 'organizations' as NavTab, label: 'Organizations', icon: Building2, count: stats?.totalOrganizations },
     { id: 'heroslides' as NavTab, label: 'Hero Slides', icon: Images },
+    { id: 'videos' as NavTab, label: 'Videos', icon: MonitorPlay },
+    { id: 'contributions' as NavTab, label: 'Contributions', icon: Inbox },
+    { id: 'requests' as NavTab, label: 'Owner Requests', icon: UserPlus },
+    { id: 'ownership' as NavTab, label: 'Ownership', icon: Link2 },
     { id: 'users' as NavTab, label: 'Users', icon: Users },
     { id: 'chat' as NavTab, label: 'Broadcast Log', icon: MessageSquare, count: stats?.totalChatMessages },
     { id: 'reports' as NavTab, label: 'Analytics', icon: BarChart3 },
@@ -135,12 +152,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, stats
                 </div>
                 {item.count !== undefined && (
                   <span
-                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
-                      isActive
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono flex items-center gap-1 ${
+                      item.id === 'live'
+                        ? 'bg-[#3ecf8e]/10 text-[#3ecf8e] border border-[#3ecf8e]/25 font-bold'
+                        : isActive
                         ? 'bg-[#3ecf8e]/10 text-[#3ecf8e] border border-[#3ecf8e]/20 font-bold'
                         : 'bg-[#171717] text-[#666666] group-hover:text-[#a1a1a1] border border-[#282828]'
                     }`}
                   >
+                    {item.id === 'live' && (
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-[#3ecf8e] opacity-75 animate-ping" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#3ecf8e]" />
+                      </span>
+                    )}
                     {item.count}
                   </span>
                 )}

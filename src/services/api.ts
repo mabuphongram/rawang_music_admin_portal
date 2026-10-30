@@ -1,4 +1,4 @@
-import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardStats, User, SubscriptionPlan, HeroSlide } from '../types';
+import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardStats, User, SubscriptionPlan, HeroSlide, Video, Contribution, OwnerClaim, OwnerRequest, ApprovedOwnerRequest, PresenceSnapshot } from '../types';
 
 // Default configuration getters
 export function getApiBaseUrl(): string {
@@ -17,6 +17,24 @@ export function getMinioPrefix(): string {
   const envPrefix = import.meta.env.MINIO_PREFIX_URL || import.meta.env.VITE_MINIO_PREFIX;
   if (envPrefix) return envPrefix.replace(/\/+$/, '');
   return '';
+}
+
+/**
+ * Optional shared key for the live-presence feed. The backend only enforces
+ * it when PRESENCE_ADMIN_KEY is set, so local development works untouched.
+ */
+export function getPresenceKey(): string {
+  const custom = localStorage.getItem('RAWANG_PRESENCE_KEY');
+  if (custom) return custom;
+  return import.meta.env.PRESENCE_ADMIN_KEY || '';
+}
+
+export function getSocketBaseUrl(): string {
+  const base = getApiBaseUrl();
+  if (/^https?:\/\//i.test(base)) {
+    return base.replace(/\/api\/?$/i, '');
+  }
+  return window.location.origin;
 }
 
 export function resolveMediaUrl(key?: string | null): string {
@@ -68,6 +86,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  // LIVE PRESENCE (admin-only list; REST fallback for the socket feed)
+  getPresence: () => {
+    const key = getPresenceKey();
+    return request<PresenceSnapshot>('/presence', {
+      headers: key ? { 'x-presence-key': key } : undefined,
+    });
+  },
+
   // Health
   checkHealth: async (customUrl?: string): Promise<{ status: string }> => {
     const baseUrl = customUrl || getApiBaseUrl();
@@ -125,9 +151,12 @@ export const api = {
     request<void>(`/albums/${id}`, { method: 'DELETE' }),
 
   // TRACKS
-  getTracks: (albumId?: string) => {
-    const query = albumId ? `?albumId=${encodeURIComponent(albumId)}` : '';
-    return request<Track[]>(`/tracks${query}`);
+  getTracks: (albumId?: string, ownerId?: string) => {
+    const params = new URLSearchParams();
+    if (albumId) params.set('albumId', albumId);
+    if (ownerId) params.set('ownerId', ownerId);
+    const query = params.toString();
+    return request<Track[]>(`/tracks${query ? `?${query}` : ''}`);
   },
 
   getTrack: (id: string) => request<Track>(`/tracks/${id}`),
@@ -200,6 +229,47 @@ export const api = {
   },
   deleteHeroSlide: (id: string) => request<void>(`/hero-slides/${id}`, { method: 'DELETE' }),
 
+  // VIDEOS (YouTube embeds — no files, ID only)
+  getVideos: (published?: boolean) => {
+    const query = published !== undefined ? `?isPublished=${published}` : '';
+    return request<Video[]>(`/videos${query}`);
+  },
+  getVideo: (id: string) => request<Video>(`/videos/${id}`),
+  createVideo: (payload: Record<string, unknown>) =>
+    request<Video>('/videos', { method: 'POST', body: JSON.stringify(payload) }),
+  updateVideo: (id: string, payload: Record<string, unknown>) =>
+    request<Video>(`/videos/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteVideo: (id: string) => request<void>(`/videos/${id}`, { method: 'DELETE' }),
+
+  // CONTRIBUTIONS (community pending-review queue)
+  getContributions: (status?: string) => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<Contribution[]>(`/contributions${query}`);
+  },
+  approveContribution: (id: string, payload: { albumIds: string[]; title?: string; artistName?: string; composerName?: string; albumName?: string; ownerType?: string; genre?: string; lyrics?: string; reviewNote?: string }) =>
+    request<{ contribution: Contribution; track: Track }>(`/contributions/${id}/approve`, { method: 'POST', body: JSON.stringify(payload) }),
+  deleteContribution: (id: string) => request<void>(`/contributions/${id}`, { method: 'DELETE' }),
+
+  // OWNER CLAIMS (artist login <-> profile linkage, admin approved)
+  getOwnerClaims: (status?: string) => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<OwnerClaim[]>(`/owner-claims${query}`);
+  },
+  approveOwnerClaim: (id: string, reviewNote?: string) =>
+    request<OwnerClaim>(`/owner-claims/${id}/approve`, { method: 'POST', body: JSON.stringify({ reviewNote }) }),
+  rejectOwnerClaim: (id: string, reviewNote?: string) =>
+    request<OwnerClaim>(`/owner-claims/${id}/reject`, { method: 'POST', body: JSON.stringify({ reviewNote }) }),
+
+  // OWNER REQUESTS (onboarding: review -> account + profile + claim)
+  getOwnerRequests: (status?: string) => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<OwnerRequest[]>(`/owner-requests${query}`);
+  },
+  approveOwnerRequest: (id: string, reviewNote?: string) =>
+    request<ApprovedOwnerRequest>(`/owner-requests/${id}/approve`, { method: 'POST', body: JSON.stringify({ reviewNote }) }),
+  rejectOwnerRequest: (id: string, reviewNote?: string) =>
+    request<OwnerRequest>(`/owner-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reviewNote }) }),
+
   // PLAYLISTS (legacy - discarded in Flutter offline, kept for mock compatibility)
   getPlaylists: () => request<Playlist[]>('/playlists'),
   createPlaylist: (payload: Partial<Playlist>) =>
@@ -214,12 +284,14 @@ export const api = {
   removeTrackFromPlaylist: (playlistId: string, trackId: string) =>
     request<Playlist>(`/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' }),
 
-  // USERS - manual subscription (1m/3m/1y) after free 4y tier
+  // USERS - manual subscription (1m/3m/1y) after free 2y tier
   getUsers: (search?: string) => {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
     return request<User[]>(`/users${q}`);
   },
   getUser: (id: string) => request<User>(`/users/${id}`),
+  updateUser: (id: string, payload: { name?: string; phone?: string; email?: string | null; avatarUrl?: string; role?: string }) =>
+    request<User>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   updateUserSubscription: (id: string, payload: { plan: SubscriptionPlan; amount?: number }) =>
     request<User>(`/users/${id}/subscription`, { method: 'PUT', body: JSON.stringify(payload) }),
   resetUserPassword: (id: string) =>

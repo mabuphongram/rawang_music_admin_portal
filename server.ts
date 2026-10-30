@@ -26,6 +26,8 @@ let singers = [
     name: 'Khar Lu',
     avatarUrl: 'singer/avatar_khar_lu.jpg',
     description: 'Master of traditional Rawang mountain melodies and modern acoustic fusion.',
+    phone: '',
+    videoLinks: [] as string[],
     createdAt: new Date('2026-01-10').toISOString(),
     updatedAt: new Date('2026-01-10').toISOString(),
   },
@@ -34,6 +36,8 @@ let singers = [
     name: 'Seng Nu',
     avatarUrl: 'singer/avatar_seng_nu.jpg',
     description: 'Celebrated vocal artist known for contemporary Rawang pop and gospel songs.',
+    phone: '',
+    videoLinks: [] as string[],
     createdAt: new Date('2026-02-01').toISOString(),
     updatedAt: new Date('2026-02-01').toISOString(),
   },
@@ -45,6 +49,8 @@ let organizations = [
     name: 'Rawang Cultural Heritage & Music Association',
     avatarUrl: 'org/avatar_rchma.jpg',
     description: 'Preserving and publishing authentic Rawang indigenous folk music and audio archives.',
+    phone: '',
+    videoLinks: [] as string[],
     createdAt: new Date('2026-01-01').toISOString(),
     updatedAt: new Date('2026-01-01').toISOString(),
   },
@@ -206,7 +212,7 @@ let users: any[] = [
     role: 'user',
     subscriptionPlan: 'free',
     subscriptionStatus: 'active',
-    subscriptionExpiresAt: new Date(Date.now() + 4 * 365 * 86400000).toISOString(),
+    subscriptionExpiresAt: new Date(Date.now() + 2 * 365 * 86400000).toISOString(),
     subscriptionStartedAt: new Date().toISOString(),
     lastPaymentAt: null,
     lastPaymentAmount: null,
@@ -242,7 +248,7 @@ let users: any[] = [
     role: 'artist',
     subscriptionPlan: 'free',
     subscriptionStatus: 'active',
-    subscriptionExpiresAt: new Date(Date.now() + 4 * 365 * 86400000).toISOString(),
+    subscriptionExpiresAt: new Date(Date.now() + 2 * 365 * 86400000).toISOString(),
     subscriptionStartedAt: new Date().toISOString(),
     lastPaymentAt: null,
     lastPaymentAmount: null,
@@ -353,10 +359,13 @@ function recountAlbumTracks(albumId: string) {
   }
 }
 app.get('/api/tracks', (req, res) => {
-  const { albumId } = req.query;
+  const { albumId, ownerId } = req.query as any;
   let result = [...tracks];
   if (albumId) {
     result = result.filter((t) => trackAlbumIds(t).includes(String(albumId)));
+  }
+  if (ownerId) {
+    result = result.filter((t) => String((t as any).ownerId || '') === String(ownerId));
   }
   result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   res.json(result);
@@ -435,6 +444,299 @@ app.delete('/api/tracks/:id', (req, res) => {
   res.status(204).send();
 });
 
+// CONTRIBUTIONS (community pending-review queue)
+let contributions: any[] = [
+  {
+    id: '66b1a2f00000000000000501',
+    title: 'Highland Harvest Song',
+    artistName: 'Mung Rawang',
+    composerName: 'Traditional',
+    durationSeconds: 214,
+    audioUrl: 'pending/66b1a2f00000000000000501/Highland Harvest Song.mp3',
+    karaokeAudioUrl: null,
+    hasKaraoke: false,
+    contributorName: 'Seng Hkawn',
+    contributorUserId: '66b1a2f00000000000000901',
+    status: 'pending',
+    createdAt: new Date('2026-03-01').toISOString(),
+    updatedAt: new Date('2026-03-01').toISOString(),
+  },
+];
+
+app.get('/api/contributions', (req, res) => {
+  const { status } = req.query;
+  let result = [...contributions];
+  if (status) {
+    result = result.filter((c) => c.status === status);
+  }
+  result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json(result);
+});
+
+app.get('/api/contributions/:id', (req, res) => {
+  const item = contributions.find((c) => c.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Contribution not found' });
+  res.json(item);
+});
+
+app.post('/api/contributions/:id/approve', (req, res) => {
+  const item = contributions.find((c) => c.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Contribution not found' });
+  if (item.status !== 'pending') {
+    return res.status(400).json({ error: `Contribution is already ${item.status}` });
+  }
+  const { albumIds, title, artistName, composerName, genre } = req.body;
+  const ids: string[] = Array.isArray(albumIds) ? albumIds : [];
+  if (ids.length === 0) return res.status(400).json({ error: 'Select at least one album' });
+  const firstAlbum = albums.find((a) => a.id === ids[0]);
+  if (!firstAlbum) return res.status(400).json({ error: 'Primary album not found' });
+
+  const trackId = generateMongoId();
+  const newTrack = {
+    id: trackId,
+    albumIds: ids,
+    albumId: ids[0],
+    title: title || item.title,
+    rawangTitle: '',
+    artistName: artistName || item.artistName,
+    composerName: composerName || item.composerName || '',
+    albumName: firstAlbum.title,
+    ownerType: firstAlbum.ownerType,
+    durationSeconds: item.durationSeconds,
+    audioUrl: `albums/${ids[0]}/tracks/${trackId}.mp3`,
+    lyrics: '',
+    genre: genre || 'Cultural',
+    playCount: 0,
+    hasKaraoke: Boolean(item.karaokeAudioUrl),
+    karaokeAudioUrl: item.karaokeAudioUrl
+      ? `albums/${ids[0]}/tracks/${trackId}-karaoke.mp3`
+      : null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  tracks.push(newTrack);
+  ids.forEach(recountAlbumTracks);
+
+  item.status = 'approved';
+  item.trackId = trackId;
+  item.reviewedAt = new Date().toISOString();
+  item.updatedAt = new Date().toISOString();
+  res.status(201).json({ contribution: item, track: newTrack });
+});
+
+app.delete('/api/contributions/:id', (req, res) => {
+  const item = contributions.find((c) => c.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Contribution not found' });
+  if (item.status !== 'pending') {
+    return res.status(400).json({ error: `Contribution is already ${item.status}` });
+  }
+  contributions = contributions.filter((c) => c.id !== req.params.id);
+  res.status(204).send();
+});
+
+// OWNER CLAIMS (artist login <-> profile linkage)
+let ownerClaims: any[] = [
+  {
+    id: '66b1a2f00000000000000601',
+    ownerModel: 'Singer',
+    ownerId: '66b1a2f00000000000000101',
+    userId: '66b1a2f00000000000000901',
+    status: 'pending',
+    reviewNote: '',
+    createdAt: new Date('2026-03-02').toISOString(),
+    updatedAt: new Date('2026-03-02').toISOString(),
+  },
+];
+
+app.post('/api/owner-claims', (req, res) => {
+  const { ownerModel, ownerId } = req.body;
+  if ((ownerModel !== 'Singer' && ownerModel !== 'Organization') || !ownerId) {
+    return res.status(400).json({ error: 'ownerModel (Singer|Organization) and ownerId are required' });
+  }
+  const taken = ownerClaims.find((c) => c.ownerModel === ownerModel && c.ownerId === ownerId && c.status === 'approved');
+  if (taken) return res.status(400).json({ error: 'This profile is already claimed' });
+  const claim = {
+    id: generateMongoId(),
+    ownerModel,
+    ownerId,
+    userId: 'mock-user',
+    status: 'pending',
+    reviewNote: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  ownerClaims.push(claim);
+  res.status(201).json(claim);
+});
+
+app.get('/api/owner-claims', (req, res) => {
+  const { status } = req.query;
+  let result = [...ownerClaims];
+  if (status) {
+    result = result.filter((c) => c.status === status);
+  }
+  result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json(result);
+});
+
+app.post('/api/owner-claims/:id/approve', (req, res) => {
+  const claim = ownerClaims.find((c) => c.id === req.params.id);
+  if (!claim) return res.status(404).json({ error: 'Claim not found' });
+  if (claim.status !== 'pending') {
+    return res.status(400).json({ error: `Claim is already ${claim.status}` });
+  }
+  const taken = ownerClaims.find((c) => c.ownerModel === claim.ownerModel && c.ownerId === claim.ownerId && c.status === 'approved');
+  if (taken) return res.status(400).json({ error: 'This profile is already claimed' });
+  claim.status = 'approved';
+  claim.reviewedAt = new Date().toISOString();
+  claim.updatedAt = new Date().toISOString();
+  ownerClaims
+    .filter((c) => c.id !== claim.id && c.ownerModel === claim.ownerModel && c.ownerId === claim.ownerId && c.status === 'pending')
+    .forEach((c) => {
+      c.status = 'rejected';
+      c.reviewNote = 'Profile claimed by another user';
+    });
+  res.json(claim);
+});
+
+app.post('/api/owner-claims/:id/reject', (req, res) => {
+  const claim = ownerClaims.find((c) => c.id === req.params.id);
+  if (!claim) return res.status(404).json({ error: 'Claim not found' });
+  if (claim.status !== 'pending') {
+    return res.status(400).json({ error: `Claim is already ${claim.status}` });
+  }
+  claim.status = 'rejected';
+  claim.reviewedAt = new Date().toISOString();
+  claim.updatedAt = new Date().toISOString();
+  res.json(claim);
+});
+
+// OWNER REQUESTS (onboarding: review -> account + profile + claim)
+let ownerRequests: any[] = [
+  {
+    id: '66b1a2f00000000000000701',
+    name: 'Naw Seng',
+    ownerModel: 'Singer',
+    phone: '09987654321',
+    description: 'Folk singer from Putao with 20 original songs.',
+    requesterName: 'Naw Seng',
+    requesterPhone: '09987654321',
+    avatarUrl: 'pending/66b1a2f00000000000000701/avatar.jpg',
+    videoLinks: [
+      'https://youtube.com/watch?v=aaaa1',
+      'https://youtube.com/watch?v=bbbb2',
+      'https://facebook.com/watch?v=cccc3',
+      'https://youtu.be/dddd4',
+      'https://facebook.com/watch?v=eeee5',
+    ],
+    status: 'pending',
+    createdAt: new Date('2026-03-03').toISOString(),
+    updatedAt: new Date('2026-03-03').toISOString(),
+  },
+];
+
+app.post('/api/owner-requests', (req, res) => {
+  const { name, ownerModel, phone, description, requesterName, requesterPhone, videoLinks, avatarUrl } = req.body;
+  if ((ownerModel !== 'Singer' && ownerModel !== 'Organization') || !name?.trim() || !requesterName?.trim() || !requesterPhone?.trim()) {
+    return res.status(400).json({ error: 'name, ownerModel, requesterName and requesterPhone are required' });
+  }
+  const links = Array.isArray(videoLinks) ? videoLinks.filter(Boolean) : [];
+  if (links.length < 5) {
+    return res.status(400).json({ error: `Attach at least 5 facebook or youtube video links (${links.length} valid)` });
+  }
+  const item = {
+    id: generateMongoId(),
+    name: name.trim(),
+    ownerModel,
+    phone: (phone || '').trim(),
+    description: (description || '').trim(),
+    requesterName: requesterName.trim(),
+    requesterPhone: requesterPhone.trim(),
+    videoLinks: links,
+    avatarUrl: avatarUrl || '',
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  ownerRequests.push(item);
+  res.status(201).json(item);
+});
+
+app.get('/api/owner-requests', (req, res) => {
+  const { status } = req.query;
+  let result = [...ownerRequests];
+  if (status) {
+    result = result.filter((r) => r.status === status);
+  }
+  result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json(result);
+});
+
+app.get('/api/owner-requests/:id', (req, res) => {
+  const item = ownerRequests.find((r) => r.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Request not found' });
+  res.json(item);
+});
+
+app.post('/api/owner-requests/:id/approve', (req, res) => {
+  const item = ownerRequests.find((r) => r.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Request not found' });
+  if (item.status !== 'pending') {
+    return res.status(400).json({ error: `Request is already ${item.status}` });
+  }
+  const dupe = (item.ownerModel === 'Singer' ? singers : organizations).find(
+    (p: any) => p.name === item.name
+  );
+  if (dupe) {
+    return res.status(409).json({ error: `A ${item.ownerModel} named "${item.name}" already exists`, profileId: dupe.id });
+  }
+  const tempPassword = Math.random().toString(36).slice(2, 10);
+  const profileId = generateMongoId();
+  const existingUser = users.find((u: any) => u.phone === item.requesterPhone);
+  const userId = existingUser ? existingUser.id : generateMongoId();
+  const linkedExisting = Boolean(existingUser);
+  if (existingUser && existingUser.role === 'user') existingUser.role = 'artist';
+  if (item.ownerModel === 'Singer') {
+    singers.push({ id: profileId, name: item.name, avatarUrl: '', description: item.description, phone: item.phone, videoLinks: item.videoLinks, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  } else {
+    organizations.push({ id: profileId, name: item.name, avatarUrl: '', description: item.description, phone: item.phone, videoLinks: item.videoLinks, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  }
+  const claim = {
+    id: generateMongoId(),
+    ownerModel: item.ownerModel,
+    ownerId: profileId,
+    userId,
+    status: 'approved',
+    reviewNote: 'Approved via owner request',
+    reviewedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  ownerClaims.push(claim);
+  item.status = 'approved';
+  item.createdUserId = userId;
+  item.createdOwnerId = profileId;
+  item.updatedAt = new Date().toISOString();
+  res.status(201).json({
+    request: item,
+    credentials: linkedExisting ? null : { phone: item.requesterPhone, tempPassword },
+    linkedExisting,
+    profile: { id: profileId, name: item.name },
+    claim,
+  });
+});
+
+app.post('/api/owner-requests/:id/reject', (req, res) => {
+  const item = ownerRequests.find((r) => r.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Request not found' });
+  if (item.status !== 'pending') {
+    return res.status(400).json({ error: `Request is already ${item.status}` });
+  }
+  item.status = 'rejected';
+  item.updatedAt = new Date().toISOString();
+  res.json(item);
+});
+
 // SINGERS
 app.get('/api/singers', (req, res) => {
   res.json(singers);
@@ -456,6 +758,8 @@ app.post('/api/singers', (req, res) => {
     name,
     avatarUrl: avatarUrl || `singer/${id}.jpg`,
     description: description || '',
+    phone: '',
+    videoLinks: [] as string[],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -499,6 +803,8 @@ app.post('/api/organizations', (req, res) => {
     name,
     avatarUrl: avatarUrl || `org/${id}.jpg`,
     description: description || '',
+    phone: '',
+    videoLinks: [] as string[],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -608,7 +914,7 @@ app.post('/api/chat/messages', (req, res) => {
   res.status(201).json(newMsg);
 });
 
-// USERS - manual subscription management (1000 users, free 4y -> 1m/3m/1y)
+// USERS - manual subscription management (1000 users, free 2y -> 1m/3m/1y)
 app.get('/api/users', (req, res) => {
   const { search } = req.query as any;
   let result = [...users];
@@ -626,6 +932,38 @@ app.get('/api/users/:id', (req, res) => {
   res.json(user);
 });
 
+app.put('/api/users/:id', (req, res) => {
+  const user = users.find((u) => u.id === req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const { name, phone, email, avatarUrl, role } = req.body as any;
+  if (name !== undefined) {
+    if (!String(name).trim()) return res.status(400).json({ error: 'Name cannot be empty' });
+    user.name = String(name).trim();
+  }
+  if (phone !== undefined) {
+    const clean = String(phone).trim();
+    if (!/^[0-9+\-\s()]{7,20}$/.test(clean)) return res.status(400).json({ error: 'Invalid phone format' });
+    if (users.some((u) => u.id !== user.id && u.phone === clean)) {
+      return res.status(409).json({ error: 'Phone already registered' });
+    }
+    user.phone = clean;
+  }
+  if (email !== undefined) {
+    const clean = String(email).trim().toLowerCase();
+    if (clean && users.some((u) => u.id !== user.id && (u.email || '').toLowerCase() === clean)) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+    user.email = clean || null;
+  }
+  if (avatarUrl !== undefined) user.avatarUrl = String(avatarUrl);
+  if (role !== undefined) {
+    if (!['user', 'artist', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+    user.role = role;
+  }
+  user.updatedAt = new Date().toISOString();
+  res.json(user);
+});
+
 app.put('/api/users/:id/subscription', (req, res) => {
   const user = users.find((u) => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
@@ -636,7 +974,7 @@ app.put('/api/users/:id/subscription', (req, res) => {
   let expires = new Date(user.subscriptionExpiresAt);
   // if expired, start from now, else extend from current expiry
   const base = expires > now ? expires : now;
-  if (plan === 'free') expires = new Date(now.getTime() + 4 * 365 * 86400000);
+  if (plan === 'free') expires = new Date(now.getTime() + 2 * 365 * 86400000);
   else if (plan === 'one_month') expires = new Date(base.getTime() + 30 * 86400000);
   else if (plan === 'three_months') expires = new Date(base.getTime() + 90 * 86400000);
   else if (plan === 'one_year') expires = new Date(base.getTime() + 365 * 86400000);
@@ -669,6 +1007,268 @@ app.delete('/api/users/:id', (req, res) => {
 // LEGACY UPLOADS
 app.post('/api/uploads', (req, res) => {
   res.json({ url: `/uploads/sample_${Date.now()}.mp3` });
+});
+
+// VIDEOS (YouTube embeds — mirrors real backend shape for local dev)
+let videos = [
+  {
+    id: '66b1a2f00000000000000901',
+    title: 'Sample MTV 1 — Big Buck Bunny (replace me)',
+    description: 'Sample video.',
+    youtubeVideoId: 'aqz-KE-bpKQ',
+    durationSeconds: 596,
+    order: 0,
+    isPublished: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '66b1a2f00000000000000902',
+    title: 'Sample MTV 2 — Gangnam Style (replace me)',
+    description: 'Sample video.',
+    youtubeVideoId: '9bZkp7q19f0',
+    durationSeconds: 253,
+    order: 1,
+    isPublished: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '66b1a2f00000000000000903',
+    title: 'Sample MTV 3 — Me at the zoo (replace me)',
+    description: 'Sample video.',
+    youtubeVideoId: 'jNQXAC9IVRw',
+    durationSeconds: 19,
+    order: 2,
+    isPublished: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+function extractMockYoutubeId(input: string): string {
+  const s = (input || '').trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  const m = s.match(
+    /(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
+  );
+  return m ? m[1] : '';
+}
+
+app.get('/api/videos', (req, res) => {
+  let result = [...videos];
+  if (req.query.isPublished !== undefined) {
+    const want = req.query.isPublished === 'true';
+    result = result.filter((v) => v.isPublished === want);
+  }
+  result.sort(
+    (a, b) => a.order - b.order || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  res.json(result);
+});
+
+app.get('/api/videos/:id', (req, res) => {
+  const video = videos.find((v) => v.id === req.params.id);
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+  res.json(video);
+});
+
+app.post('/api/videos', (req, res) => {
+  const { title, description, youtubeVideoId, youtubeUrl, durationSeconds, order, isPublished } = req.body;
+  const id = extractMockYoutubeId(youtubeVideoId || youtubeUrl || '');
+  if (!title || !id) {
+    return res.status(400).json({ error: 'Title and valid YouTube link/ID required' });
+  }
+  const newVideo = {
+    id: generateMongoId(),
+    title: String(title).trim(),
+    description: description || '',
+    youtubeVideoId: id,
+    durationSeconds: Number(durationSeconds) || 0,
+    order: Number(order) || 0,
+    isPublished: isPublished !== false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  videos.push(newVideo);
+  res.status(201).json(newVideo);
+});
+
+app.put('/api/videos/:id', (req, res) => {
+  const index = videos.findIndex((v) => v.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Video not found' });
+  const existing = videos[index];
+  let videoId = existing.youtubeVideoId;
+  if (req.body.youtubeVideoId !== undefined || req.body.youtubeUrl !== undefined) {
+    const id = extractMockYoutubeId(req.body.youtubeVideoId || req.body.youtubeUrl || '');
+    if (!id) return res.status(400).json({ error: 'Valid YouTube link or video ID required' });
+    videoId = id;
+  }
+  const updated = {
+    ...existing,
+    ...req.body,
+    youtubeVideoId: videoId,
+    updatedAt: new Date().toISOString(),
+  };
+  videos[index] = updated;
+  res.json(updated);
+});
+
+app.delete('/api/videos/:id', (req, res) => {
+  videos = videos.filter((v) => v.id !== req.params.id);
+  res.status(204).send();
+});
+
+// LIVE PRESENCE (local preview)
+// The real backend streams this over Socket.IO and exposes /api/presence.
+// This mock keeps the admin UI useful when running against the bundled API.
+const mockPresenceBoot = Date.now();
+const mockPresenceSessions = [
+  {
+    connectionId: 'mock-live-01',
+    userId: '66b1a2f00000000000000502',
+    name: 'Seng Mai',
+    email: 'seng.mai@rawangmelodies.xyz',
+    avatarUrl: '',
+    role: 'user',
+    platform: 'ios',
+    app: 'web',
+    appVersion: '2.4.0',
+    status: 'listening',
+    currentTrack: {
+      id: tracks[2]?.id,
+      title: tracks[2]?.title,
+      artistName: tracks[2]?.artistName,
+      albumName: tracks[2]?.albumName,
+    },
+    isGuest: false,
+    connectedAt: new Date(mockPresenceBoot - 12 * 60000).toISOString(),
+  },
+  {
+    connectionId: 'mock-live-02',
+    userId: '66b1a2f00000000000000503',
+    name: 'Khar Lu',
+    email: 'khar.lu@rawangmelodies.xyz',
+    avatarUrl: 'singer/avatar_khar_lu.jpg',
+    role: 'artist',
+    platform: 'android',
+    app: 'flutter',
+    appVersion: '1.0',
+    status: 'listening',
+    currentTrack: {
+      id: tracks[0]?.id,
+      title: tracks[0]?.title,
+      artistName: tracks[0]?.artistName,
+      albumName: tracks[0]?.albumName,
+    },
+    isGuest: false,
+    connectedAt: new Date(mockPresenceBoot - 26 * 60000).toISOString(),
+  },
+  {
+    connectionId: 'mock-live-03',
+    userId: '66b1a2f00000000000000501',
+    name: 'MB Pongram',
+    email: 'admin@rawangmelodies.xyz',
+    avatarUrl: '',
+    role: 'admin',
+    platform: 'windows',
+    app: 'flutter',
+    appVersion: '1.0',
+    status: 'listening',
+    currentTrack: {
+      id: tracks[3]?.id,
+      title: tracks[3]?.title,
+      artistName: tracks[3]?.artistName,
+      albumName: tracks[3]?.albumName,
+    },
+    isGuest: false,
+    connectedAt: new Date(mockPresenceBoot - 41 * 60000).toISOString(),
+  },
+  {
+    connectionId: 'mock-live-04',
+    userId: null,
+    name: 'Guest',
+    email: '',
+    avatarUrl: '',
+    role: 'guest',
+    platform: 'android',
+    app: 'flutter',
+    appVersion: '1.0',
+    status: 'browsing',
+    currentTrack: null,
+    isGuest: true,
+    connectedAt: new Date(mockPresenceBoot - 3 * 60000).toISOString(),
+  },
+  {
+    connectionId: 'mock-live-05',
+    userId: null,
+    name: 'Rawang Listener',
+    email: '',
+    avatarUrl: '',
+    role: 'guest',
+    platform: 'web',
+    app: 'web',
+    appVersion: '2.4.0',
+    status: 'listening',
+    currentTrack: {
+      id: tracks[1]?.id,
+      title: tracks[1]?.title,
+      artistName: tracks[1]?.artistName,
+      albumName: tracks[1]?.albumName,
+    },
+    isGuest: true,
+    connectedAt: new Date(mockPresenceBoot - 7 * 60000).toISOString(),
+  },
+  {
+    connectionId: 'mock-live-06',
+    userId: 'mock-user-06',
+    name: 'Seng Hkawn',
+    email: 'seng.hkawn@rawangmelodies.xyz',
+    avatarUrl: '',
+    role: 'user',
+    platform: 'macos',
+    app: 'web',
+    appVersion: '2.4.0',
+    status: 'browsing',
+    currentTrack: null,
+    isGuest: false,
+    connectedAt: new Date(mockPresenceBoot - 55 * 60000).toISOString(),
+  },
+  {
+    connectionId: 'mock-live-07',
+    userId: 'mock-user-07',
+    name: 'Naw Seng',
+    email: 'naw.seng@rawangmelodies.xyz',
+    avatarUrl: '',
+    role: 'artist',
+    platform: 'ios',
+    app: 'flutter',
+    appVersion: '1.0',
+    status: 'listening',
+    currentTrack: {
+      id: tracks[0]?.id,
+      title: tracks[0]?.title,
+      artistName: tracks[0]?.artistName,
+      albumName: tracks[0]?.albumName,
+    },
+    isGuest: false,
+    connectedAt: new Date(mockPresenceBoot - 74 * 60000).toISOString(),
+  },
+];
+
+app.get('/api/presence', (req, res) => {
+  const now = new Date().toISOString();
+  const users = mockPresenceSessions.map((session) => ({
+    ...session,
+    lastSeen: now,
+  }));
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    count: users.length,
+    users,
+    generatedAt: now,
+    simulated: true,
+  });
 });
 
 async function startServer() {

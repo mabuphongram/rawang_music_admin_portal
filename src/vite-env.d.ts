@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly MINIO_PREFIX_URL?: string;
   readonly VITE_API_URL?: string;
   readonly VITE_MINIO_PREFIX?: string;
+  /** Optional shared key required by a protected presence endpoint. */
+  readonly PRESENCE_ADMIN_KEY?: string;
 }
 
 interface ImportMeta {

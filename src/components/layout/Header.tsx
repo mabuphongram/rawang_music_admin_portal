@@ -25,6 +25,10 @@ export const Header: React.FC<HeaderProps> = ({
       title: 'Overview',
       subtitle: 'Real-time catalogue statistics, owner distribution & music metrics',
     },
+    live: {
+      title: 'Live Users',
+      subtitle: 'Realtime presence from the Flutter app and iOS web player',
+    },
     albums: {
       title: 'Albums',
       subtitle: 'Catalogue albums by singers, organizations & anonymous owners',
@@ -45,9 +49,25 @@ export const Header: React.FC<HeaderProps> = ({
       title: 'Hero Slides',
       subtitle: 'Home 16:9 carousel banners, texts, display seconds & order',
     },
+    videos: {
+      title: 'Videos',
+      subtitle: 'YouTube MTV embeds for the home row — links only, no hosting',
+    },
+    contributions: {
+      title: 'Contributions',
+      subtitle: 'Community song submissions pending review and publishing',
+    },
+    requests: {
+      title: 'Owner Requests',
+      subtitle: 'Artist onboarding — review proof videos, create account + profile',
+    },
+    ownership: {
+      title: 'Ownership',
+      subtitle: 'Per-track earnings attribution — one owner per track, going forward',
+    },
     users: {
       title: 'Users',
-      subtitle: 'Phone auth, manual 1m/3m/1y subscriptions, 1000 free 4y tier',
+      subtitle: 'Phone auth, manual 1m/3m/1y subscriptions, 1000 free 2y tier',
     },
     chat: {
       title: 'Broadcast Log',
@@ -82,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Action Controls */}
       <div className="flex items-center gap-2.5">
         {/* Search input with Supabase kbd badge */}
-        {['albums', 'tracks', 'singers', 'organizations', 'heroslides', 'users', 'chat'].includes(activeTab) && (
+        {['live', 'albums', 'tracks', 'singers', 'organizations', 'heroslides', 'contributions', 'requests', 'ownership', 'users', 'chat'].includes(activeTab) && (
           <div className="relative w-48 sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#666666]" />
             <input
