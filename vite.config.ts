@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.APP_URL': JSON.stringify(env.APP_URL ?? ''),
       'import.meta.env.MINIO_PREFIX_URL': JSON.stringify(env.MINIO_PREFIX_URL ?? ''),
       'import.meta.env.PRESENCE_ADMIN_KEY': JSON.stringify(env.PRESENCE_ADMIN_KEY ?? ''),
+      'import.meta.env.PUSH_ADMIN_KEY': JSON.stringify(env.PUSH_ADMIN_KEY ?? ''),
     },
     plugins: [react(), tailwindcss()],
     resolve: {

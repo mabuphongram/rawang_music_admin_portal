@@ -16,6 +16,7 @@ import { OwnerRequestsView } from './components/requests/OwnerRequestsView';
 import { OwnershipView } from './components/ownership/OwnershipView';
 import { UsersView } from './components/users/UsersView';
 import { ChatView } from './components/chat/ChatView';
+import { NotificationsView } from './components/notifications/NotificationsView';
 import { ReportsView } from './components/reports/ReportsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { GlobalAudioBar } from './components/common/GlobalAudioBar';
@@ -35,6 +36,7 @@ const NAV_TABS: NavTab[] = [
   'ownership',
   'users',
   'chat',
+  'notifications',
   'reports',
   'settings',
 ];
@@ -162,6 +164,8 @@ export function AdminApp() {
           {activeTab === 'users' && <UsersView searchTerm={searchTerm} />}
 
           {activeTab === 'chat' && <ChatView searchTerm={searchTerm} />}
+
+          {activeTab === 'notifications' && <NotificationsView />}
 
           {activeTab === 'reports' && <ReportsView />}
 

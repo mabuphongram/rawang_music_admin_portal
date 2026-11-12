@@ -73,6 +73,10 @@ export const Header: React.FC<HeaderProps> = ({
       title: 'Broadcast Log',
       subtitle: 'System broadcasts and user interaction feed',
     },
+    notifications: {
+      title: 'Push Notifications',
+      subtitle: 'Send an instant FCM broadcast to every subscribed Android device',
+    },
     reports: {
       title: 'Analytics & Reports',
       subtitle: 'In-depth catalogue audits, genre metrics and exportable reports',

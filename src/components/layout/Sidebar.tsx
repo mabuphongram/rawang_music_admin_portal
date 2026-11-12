@@ -21,6 +21,7 @@ import {
   Terminal,
   Users,
   Radio,
+  Bell,
 } from 'lucide-react';
 
 export type NavTab =
@@ -37,6 +38,7 @@ export type NavTab =
   | 'ownership'
   | 'users'
   | 'chat'
+  | 'notifications'
   | 'reports'
   | 'settings';
 
@@ -71,6 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, stats
     { id: 'ownership' as NavTab, label: 'Ownership', icon: Link2 },
     { id: 'users' as NavTab, label: 'Users', icon: Users },
     { id: 'chat' as NavTab, label: 'Broadcast Log', icon: MessageSquare, count: stats?.totalChatMessages },
+    { id: 'notifications' as NavTab, label: 'Push Notifications', icon: Bell },
     { id: 'reports' as NavTab, label: 'Analytics', icon: BarChart3 },
     { id: 'settings' as NavTab, label: 'Project Settings', icon: Settings },
   ];

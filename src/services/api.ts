@@ -1,4 +1,4 @@
-import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardStats, User, SubscriptionPlan, HeroSlide, Video, Contribution, OwnerClaim, OwnerRequest, ApprovedOwnerRequest, PresenceSnapshot } from '../types';
+import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardStats, User, SubscriptionPlan, HeroSlide, Video, Contribution, OwnerClaim, OwnerRequest, ApprovedOwnerRequest, PresenceSnapshot, PushNotificationStatus, PushBroadcastResult } from '../types';
 
 // Default configuration getters
 export function getApiBaseUrl(): string {
@@ -27,6 +27,12 @@ export function getPresenceKey(): string {
   const custom = localStorage.getItem('RAWANG_PRESENCE_KEY');
   if (custom) return custom;
   return import.meta.env.PRESENCE_ADMIN_KEY || '';
+}
+
+export function getPushKey(): string {
+  const custom = localStorage.getItem('RAWANG_PUSH_KEY');
+  if (custom) return custom;
+  return import.meta.env.PUSH_ADMIN_KEY || '';
 }
 
 export function getSocketBaseUrl(): string {
@@ -302,6 +308,17 @@ export const api = {
   getChatMessages: () => request<ChatMessage[]>('/chat/messages'),
   sendChatMessage: (payload: Partial<ChatMessage>) =>
     request<ChatMessage>('/chat/messages', { method: 'POST', body: JSON.stringify(payload) }),
+
+  // PUSH NOTIFICATIONS (FCM topic broadcast to every subscribed Android device)
+  getNotificationStatus: () => request<PushNotificationStatus>('/notifications/status'),
+  sendBroadcastNotification: (payload: { title: string; body: string; type?: string; id?: string }) => {
+    const key = getPushKey();
+    return request<PushBroadcastResult>('/notifications/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      ...(key ? { headers: { 'x-push-key': key } } : {}),
+    });
+  },
 
   // DASHBOARD STATS CALCULATOR
   getDashboardStats: async (): Promise<DashboardStats> => {

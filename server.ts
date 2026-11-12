@@ -1015,6 +1015,7 @@ let videos = [
     id: '66b1a2f00000000000000901',
     title: 'Sample MTV 1 — Big Buck Bunny (replace me)',
     description: 'Sample video.',
+    category: 'Folk',
     youtubeVideoId: 'aqz-KE-bpKQ',
     durationSeconds: 596,
     order: 0,
@@ -1026,6 +1027,7 @@ let videos = [
     id: '66b1a2f00000000000000902',
     title: 'Sample MTV 2 — Gangnam Style (replace me)',
     description: 'Sample video.',
+    category: 'Country Song',
     youtubeVideoId: '9bZkp7q19f0',
     durationSeconds: 253,
     order: 1,
@@ -1037,6 +1039,7 @@ let videos = [
     id: '66b1a2f00000000000000903',
     title: 'Sample MTV 3 — Me at the zoo (replace me)',
     description: 'Sample video.',
+    category: 'Gospel',
     youtubeVideoId: 'jNQXAC9IVRw',
     durationSeconds: 19,
     order: 2,
@@ -1061,6 +1064,10 @@ app.get('/api/videos', (req, res) => {
     const want = req.query.isPublished === 'true';
     result = result.filter((v) => v.isPublished === want);
   }
+  if (req.query.category !== undefined) {
+    const category = String(req.query.category).trim();
+    if (category) result = result.filter((v) => v.category === category);
+  }
   result.sort(
     (a, b) => a.order - b.order || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -1074,7 +1081,7 @@ app.get('/api/videos/:id', (req, res) => {
 });
 
 app.post('/api/videos', (req, res) => {
-  const { title, description, youtubeVideoId, youtubeUrl, durationSeconds, order, isPublished } = req.body;
+  const { title, description, category, youtubeVideoId, youtubeUrl, durationSeconds, order, isPublished } = req.body;
   const id = extractMockYoutubeId(youtubeVideoId || youtubeUrl || '');
   if (!title || !id) {
     return res.status(400).json({ error: 'Title and valid YouTube link/ID required' });
@@ -1083,6 +1090,7 @@ app.post('/api/videos', (req, res) => {
     id: generateMongoId(),
     title: String(title).trim(),
     description: description || '',
+    category: String(category || 'Other').trim() || 'Other',
     youtubeVideoId: id,
     durationSeconds: Number(durationSeconds) || 0,
     order: Number(order) || 0,

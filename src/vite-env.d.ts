@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_MINIO_PREFIX?: string;
   /** Optional shared key required by a protected presence endpoint. */
   readonly PRESENCE_ADMIN_KEY?: string;
+  /** Optional shared key required by the protected push broadcast endpoint. */
+  readonly PUSH_ADMIN_KEY?: string;
 }
 
 interface ImportMeta {

@@ -35,6 +35,17 @@ function parseDurationInput(v: string): number {
   return 0;
 }
 
+export const VIDEO_CATEGORIES = [
+  'Folk',
+  'Love Song',
+  'Mother',
+  'Country Song',
+  'Gospel',
+  'Worship',
+  'Country',
+  'Other',
+];
+
 export const VideosView: React.FC<VideosViewProps> = ({ searchTerm }) => {
   const { addToast, refreshKey, triggerRefresh } = useBackend();
 
@@ -49,6 +60,7 @@ export const VideosView: React.FC<VideosViewProps> = ({ searchTerm }) => {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Other');
   const [youtubeLink, setYoutubeLink] = useState('');
   const [durationInput, setDurationInput] = useState('');
   const [order, setOrder] = useState(0);
@@ -77,6 +89,7 @@ export const VideosView: React.FC<VideosViewProps> = ({ searchTerm }) => {
   const resetForm = (video?: Video | null) => {
     setTitle(video?.title || '');
     setDescription(video?.description || '');
+    setCategory(video?.category || 'Other');
     setYoutubeLink(video?.youtubeVideoId || '');
     setDurationInput(video?.durationSeconds ? formatDuration(video.durationSeconds) : '');
     setOrder(video?.order ?? 0);
@@ -112,6 +125,7 @@ export const VideosView: React.FC<VideosViewProps> = ({ searchTerm }) => {
       const payload = {
         title: title.trim(),
         description: description.trim(),
+        category: category.trim() || 'Other',
         youtubeVideoId: videoId,
         durationSeconds: parseDurationInput(durationInput),
         order: Number(order) || 0,
@@ -167,6 +181,7 @@ export const VideosView: React.FC<VideosViewProps> = ({ searchTerm }) => {
     return (
       v.title.toLowerCase().includes(term) ||
       (v.description || '').toLowerCase().includes(term) ||
+      (v.category || '').toLowerCase().includes(term) ||
       v.youtubeVideoId.toLowerCase().includes(term)
     );
   });
@@ -247,28 +262,33 @@ export const VideosView: React.FC<VideosViewProps> = ({ searchTerm }) => {
                 </a>
               </div>
 
-              <div className="p-3 border-t border-[#282828] w-full flex items-center justify-end gap-2">
-                <button
-                  onClick={() => handleTogglePublished(video)}
-                  className="p-1.5 rounded bg-[#222222] border border-[#333333] hover:bg-[#2a2a2a] text-[#ededed] transition-colors"
-                  title={video.isPublished ? 'Hide video' : 'Show video'}
-                >
-                  {video.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                </button>
-                <button
-                  onClick={() => handleOpenEdit(video)}
-                  className="p-1.5 rounded bg-[#222222] border border-[#333333] hover:bg-[#2a2a2a] text-[#ededed] transition-colors"
-                  title="Edit Video"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setDeletingVideo(video)}
-                  className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-                  title="Delete Video"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+              <div className="p-3 border-t border-[#282828] w-full flex items-center justify-between gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-[#141414] border border-[#333333] text-[10px] font-mono text-[#3ecf8e] truncate">
+                  {video.category || 'Other'}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleTogglePublished(video)}
+                    className="p-1.5 rounded bg-[#222222] border border-[#333333] hover:bg-[#2a2a2a] text-[#ededed] transition-colors"
+                    title={video.isPublished ? 'Hide video' : 'Show video'}
+                  >
+                    {video.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => handleOpenEdit(video)}
+                    className="p-1.5 rounded bg-[#222222] border border-[#333333] hover:bg-[#2a2a2a] text-[#ededed] transition-colors"
+                    title="Edit Video"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setDeletingVideo(video)}
+                    className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                    title="Delete Video"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -348,6 +368,26 @@ export const VideosView: React.FC<VideosViewProps> = ({ searchTerm }) => {
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[#ededed] font-medium mb-1 font-mono">Category</label>
+                <input
+                  type="text"
+                  list="video-category-options"
+                  placeholder="Folk, Gospel, Worship..."
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]"
+                />
+                <datalist id="video-category-options">
+                  {VIDEO_CATEGORIES.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                <p className="text-[10px] text-[#666666] mt-1 font-mono">
+                  Videos are grouped by this value in the app tabs.
+                </p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">

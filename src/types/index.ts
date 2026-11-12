@@ -105,6 +105,7 @@ export interface Video {
   id: string;
   title: string;
   description?: string;
+  category?: string;
   youtubeVideoId: string;
   durationSeconds: number;
   order: number;
@@ -259,3 +260,15 @@ export interface PresenceSnapshot {
   generatedAt: string;
   simulated?: boolean;
 }
+
+export interface PushNotificationStatus {
+  configured: boolean;
+  topic: string;
+}
+
+export interface PushBroadcastResult {
+  ok: boolean;
+  messageId: string;
+  topic: string;
+}
+
