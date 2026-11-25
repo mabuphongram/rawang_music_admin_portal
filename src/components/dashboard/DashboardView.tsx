@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Album, Track, Singer, Organization, Playlist, User } from '../../types';
+﻿import React, { useEffect, useState } from 'react';
+import { Album, Track, Singer, Organization, User, AlbumPurchase } from '../../types';
 import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import { MediaImage } from '../common/MediaImage';
@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   Headphones,
   Plus,
+  CreditCard,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -32,7 +33,7 @@ import {
 
 interface DashboardViewProps {
   setActiveTab: (tab: NavTab) => void;
-  onOpenCreateModal: (type: 'album' | 'track' | 'singer' | 'organization' | 'playlist') => void;
+  onOpenCreateModal: (type: 'album' | 'track' | 'singer' | 'organization') => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -45,8 +46,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [tracks, setTracks] = useState<Track[]>([]);
   const [singers, setSingers] = useState<Singer[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [purchases, setPurchases] = useState<AlbumPurchase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -54,21 +55,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [a, t, s, o, p, u] = await Promise.all([
+        const [a, t, s, o, u, p] = await Promise.all([
           api.getAlbums(),
           api.getTracks(),
           api.getSingers(),
           api.getOrganizations(),
-          api.getPlaylists().catch(() => []),
           api.getUsers().catch(() => []),
+          api.getAlbumPurchases('pending').catch(() => []),
         ]);
         if (isMounted) {
           setAlbums(a || []);
           setTracks(t || []);
           setSingers(s || []);
           setOrganizations(o || []);
-          setPlaylists(p || []);
           setUsers((u as User[]) || []);
+          setPurchases((p as AlbumPurchase[]) || []);
         }
       } catch (err) {
         console.error('Dashboard fetch error:', err);
@@ -84,11 +85,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Derived stats
   const totalPlays = tracks.reduce((acc, trk) => acc + (trk.playCount || 0), 0);
+  const pendingPurchases = purchases.filter((p) => p.status === 'pending').length;
 
   // Genre chart data
   const genreCounts: Record<string, number> = {};
   tracks.forEach((t) => {
-    const g = t.genre || 'Folk';
+    const g = t.genre || 'Unspecified';
     genreCounts[g] = (genreCounts[g] || 0) + 1;
   });
   const genreData = Object.keys(genreCounts).map((g) => ({
@@ -181,7 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <p className="text-[10px] text-[#888888] mt-2 font-mono">Entities</p>
         </div>
 
-        {/* Users - replaces Playlists (discarded in Flutter) */}
+        {/* Users */}
         <div
           onClick={() => setActiveTab('users')}
           className="bg-[#1c1c1c] p-4 rounded border border-[#282828] hover:border-[#3e3e3e] cursor-pointer transition-all group"
@@ -193,7 +195,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           <div className="text-2xl font-bold font-mono text-white">{users.length}</div>
-          <p className="text-[10px] text-[#3ecf8e] mt-2 font-mono">{users.filter((u) => u.subscriptionPlan !== 'free').length} Paid • {users.filter((u) => u.subscriptionPlan === 'free').length} Free 2y</p>
+          <p className="text-[10px] text-[#3ecf8e] mt-2 font-mono">{users.filter((u) => (u.purchasedAlbumIds?.length || 0) > 0).length} Album Buyers</p>
         </div>
 
         {/* Total Plays */}
@@ -228,6 +230,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab('payments')}
+            className="px-3 py-1.5 rounded bg-[#222222] hover:bg-[#2a2a2a] border border-[#333333] text-[#ededed] text-xs font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <CreditCard className="w-3.5 h-3.5 text-[#3ecf8e]" />
+            <span>Payments</span>
+            {pendingPurchases > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-mono">{pendingPurchases}</span>
+            )}
+          </button>
           <button
             onClick={() => onOpenCreateModal('album')}
             className="px-3 py-1.5 rounded bg-[#3ecf8e] hover:bg-[#34b27b] text-black text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
@@ -412,7 +424,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                     <p className="text-[11px] text-[#888888] truncate font-mono">
-                      {track.artistName} • {track.albumName}
+                      {track.artistName}  -  {track.albumName}
                     </p>
                   </div>
                 </div>
@@ -480,3 +492,4 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </div>
   );
 };
+

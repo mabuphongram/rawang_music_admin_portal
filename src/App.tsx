@@ -6,6 +6,8 @@ import { Header } from './components/layout/Header';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { LiveUsersView } from './components/live/LiveUsersView';
 import { AlbumsView } from './components/albums/AlbumsView';
+import { PaymentsView } from './components/payments/PaymentsView';
+import { AlbumSalesView } from './components/payments/AlbumSalesView';
 import { TracksView } from './components/tracks/TracksView';
 import { SingersView } from './components/singers/SingersView';
 import { OrganizationsView } from './components/organizations/OrganizationsView';
@@ -26,6 +28,8 @@ const NAV_TABS: NavTab[] = [
   'dashboard',
   'live',
   'albums',
+  'payments',
+  'album-sales',
   'tracks',
   'singers',
   'organizations',
@@ -119,6 +123,10 @@ export function AdminApp() {
               onSelectAlbumForTracks={handleSelectAlbumForTracks}
             />
           )}
+
+          {activeTab === 'payments' && <PaymentsView searchTerm={searchTerm} />}
+
+          {activeTab === 'album-sales' && <AlbumSalesView searchTerm={searchTerm} />}
 
           {activeTab === 'tracks' && (
             <TracksView

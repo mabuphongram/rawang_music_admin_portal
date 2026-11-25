@@ -88,10 +88,6 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) {
-      addToast('warning', 'Slide title is required.');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -121,10 +117,10 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
 
       if (editingSlide) {
         await api.updateHeroSlide(editingSlide.id, bodyData);
-        addToast('success', `Hero slide "${title}" updated.`);
+        addToast('success', `Hero slide "${title.trim() || 'Untitled'}" updated.`);
       } else {
         await api.createHeroSlide(bodyData);
-        addToast('success', `Hero slide "${title}" added.`);
+        addToast('success', `Hero slide "${title.trim() || 'Untitled'}" added.`);
       }
 
       setIsModalOpen(false);
@@ -153,7 +149,10 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
     setIsDeleting(true);
     try {
       await api.deleteHeroSlide(deletingSlide.id);
-      addToast('success', `Hero slide "${deletingSlide.title}" deleted.`);
+      addToast(
+        'success',
+        `Hero slide "${deletingSlide.title || 'Untitled'}" deleted.`
+      );
       setDeletingSlide(null);
       triggerRefresh();
       fetchSlides();
@@ -167,7 +166,7 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
   const filteredSlides = slides.filter((s) => {
     const term = searchTerm.toLowerCase();
     return (
-      s.title.toLowerCase().includes(term) ||
+      (s.title || '').toLowerCase().includes(term) ||
       (s.eyebrow || '').toLowerCase().includes(term) ||
       (s.subtitle || '').toLowerCase().includes(term)
     );
@@ -236,7 +235,9 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
                   {slide.eyebrow && (
                     <p className="text-[10px] font-bold tracking-widest text-[#3ecf8e]">{slide.eyebrow}</p>
                   )}
-                  <h4 className="text-sm font-bold text-white">{slide.title}</h4>
+                  {slide.title && (
+                    <h4 className="text-sm font-bold text-white">{slide.title}</h4>
+                  )}
                   {slide.subtitle && <p className="text-xs text-[#cccccc]">{slide.subtitle}</p>}
                 </div>
                 {!slide.isActive && (
@@ -295,7 +296,7 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
               <Images className="w-4 h-4 text-[#3ecf8e]" />
               {editingSlide ? 'Edit Hero Slide' : 'Add New Hero Slide'}
             </h3>
-            <p className="text-[11px] text-[#888888] mb-6 font-mono">Required: title + 16:9 photo • Texts 1-3 optional • Seconds = autoplay hold</p>
+            <p className="text-[11px] text-[#888888] mb-6 font-mono">Required: 16:9 photo • Texts 1-3 optional • Seconds = autoplay hold</p>
 
             {/* 16:9 live preview */}
             <div className="relative aspect-video rounded overflow-hidden bg-black border border-[#282828] mb-4">
@@ -308,7 +309,7 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
               )}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 pt-6">
                 {eyebrow && <p className="text-[10px] font-bold tracking-widest text-[#3ecf8e]">{eyebrow}</p>}
-                <p className="text-sm font-bold text-white">{title || 'Title preview'}</p>
+                {title && <p className="text-sm font-bold text-white">{title}</p>}
                 {subtitle && <p className="text-xs text-[#cccccc]">{subtitle}</p>}
               </div>
             </div>
@@ -316,11 +317,10 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block text-[#ededed] font-medium mb-1 font-mono">
-                  Title (text 2, main) <span className="text-red-400">*</span>
+                  Title (text 2 - optional)
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. Preserving Our Ancestral Echoes"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -438,7 +438,7 @@ export const HeroSlidesView: React.FC<HeroSlidesViewProps> = ({
       <ConfirmDialog
         isOpen={Boolean(deletingSlide)}
         title="Delete Hero Slide"
-        message={`Are you sure you want to delete hero slide "${deletingSlide?.title}"?`}
+        message={`Are you sure you want to delete hero slide "${deletingSlide?.title || 'Untitled'}"?`}
         resourceType="hero slide"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeletingSlide(null)}

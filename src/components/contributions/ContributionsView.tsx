@@ -3,6 +3,7 @@ import { Contribution, Album, Track } from '../../types';
 import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { GenreInput } from '../common/GenreInput';
 import { Inbox, Play, Mic2, CheckCircle2, Trash2, X, Clock, User } from 'lucide-react';
 
 interface ContributionsViewProps {
@@ -24,6 +25,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({ searchTerm
 
   const [items, setItems] = useState<Contribution[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [genreOptions, setGenreOptions] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -34,7 +36,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({ searchTerm
   const [title, setTitle] = useState('');
   const [artistName, setArtistName] = useState('');
   const [composerName, setComposerName] = useState('');
-  const [genre, setGenre] = useState('Cultural');
+  const [genre, setGenre] = useState('');
 
   // Discard modal
   const [discarding, setDiscarding] = useState<Contribution | null>(null);
@@ -43,12 +45,14 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({ searchTerm
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [cData, aData] = await Promise.all([
+      const [cData, aData, genreData] = await Promise.all([
         api.getContributions(statusFilter || undefined),
         api.getAlbums(),
+        api.getGenres(),
       ]);
       setItems(cData || []);
       setAlbums(aData || []);
+      setGenreOptions(genreData || []);
     } catch (err: any) {
       addToast('error', `Failed to load contributions: ${err.message}`);
     } finally {
@@ -85,7 +89,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({ searchTerm
     setTitle(c.title);
     setArtistName(c.artistName);
     setComposerName(c.composerName || '');
-    setGenre('Cultural');
+    setGenre('');
     setAlbumIds([]);
   };
 
@@ -361,12 +365,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({ searchTerm
 
               <div>
                 <label className="block text-[#ededed] font-medium mb-1 font-mono">Genre</label>
-                <input
-                  type="text"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
-                />
+                <GenreInput value={genre} onChange={setGenre} options={genreOptions} />
               </div>
 
               <div className="pt-3 border-t border-[#282828] flex items-center justify-end gap-3">

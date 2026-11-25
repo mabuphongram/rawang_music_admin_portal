@@ -1,4 +1,4 @@
-import { Album, Track, Singer, Organization, Playlist, ChatMessage, DashboardStats, User, SubscriptionPlan, HeroSlide, Video, Contribution, OwnerClaim, OwnerRequest, ApprovedOwnerRequest, PresenceSnapshot, PushNotificationStatus, PushBroadcastResult } from '../types';
+import { Album, Track, Singer, Organization, ChatMessage, DashboardStats, User, SubscriptionPlan, HeroSlide, Video, Contribution, OwnerClaim, OwnerRequest, ApprovedOwnerRequest, PresenceSnapshot, PushNotificationStatus, PushBroadcastResult, AlbumPurchase, AlbumPurchaseDeleteResult, AlbumSalesResult } from '../types';
 
 // Default configuration getters
 export function getApiBaseUrl(): string {
@@ -156,6 +156,45 @@ export const api = {
   deleteAlbum: (id: string) =>
     request<void>(`/albums/${id}`, { method: 'DELETE' }),
 
+  // PREMIUM ALBUM PAYMENTS (one-time screenshot review queue)
+  getAlbumPurchases: (status?: string, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const query = params.toString();
+    return request<AlbumPurchase[]>(`/album-purchases${query ? `?${query}` : ''}`);
+  },
+  getAlbumSales: (ownerModel: string, ownerId: string, albumId?: string) => {
+    const params = new URLSearchParams({ ownerModel, ownerId });
+    if (albumId) params.set('albumId', albumId);
+    return request<AlbumSalesResult>(`/album-purchases/album-sales?${params.toString()}`);
+  },
+  approveAlbumPurchase: (id: string, reviewNote?: string) =>
+    request<AlbumPurchase>(`/album-purchases/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ reviewNote }),
+    }),
+  rejectAlbumPurchase: (id: string, reviewNote?: string) =>
+    request<AlbumPurchase>(`/album-purchases/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reviewNote }),
+    }),
+  revertAlbumPurchase: (id: string) =>
+    request<AlbumPurchase>(`/album-purchases/${id}/revert`, {
+      method: 'POST',
+    }),
+  deleteAlbumPurchase: (id: string) =>
+    request<{ deleted: boolean; screenshotRemoved: boolean }>(
+      `/album-purchases/${id}`,
+      { method: 'DELETE' }
+    ),
+  deleteAlbumPurchaseHistory: (ids: string[]) =>
+    request<AlbumPurchaseDeleteResult>('/album-purchases', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
+    }),
+
   // TRACKS
   getTracks: (albumId?: string, ownerId?: string) => {
     const params = new URLSearchParams();
@@ -166,6 +205,8 @@ export const api = {
   },
 
   getTrack: (id: string) => request<Track>(`/tracks/${id}`),
+
+  getGenres: () => request<string[]>('/tracks/genres'),
 
   createTrack: (formData: FormData | Record<string, unknown>) => {
     let body: BodyInit;
@@ -276,20 +317,6 @@ export const api = {
   rejectOwnerRequest: (id: string, reviewNote?: string) =>
     request<OwnerRequest>(`/owner-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reviewNote }) }),
 
-  // PLAYLISTS (legacy - discarded in Flutter offline, kept for mock compatibility)
-  getPlaylists: () => request<Playlist[]>('/playlists'),
-  createPlaylist: (payload: Partial<Playlist>) =>
-    request<Playlist>('/playlists', { method: 'POST', body: JSON.stringify(payload) }),
-  getPlaylistTracks: (playlistId: string) =>
-    request<Track[]>(`/playlists/${playlistId}/tracks`),
-  addTrackToPlaylist: (playlistId: string, trackId: string) =>
-    request<Playlist>(`/playlists/${playlistId}/tracks`, {
-      method: 'POST',
-      body: JSON.stringify({ trackId }),
-    }),
-  removeTrackFromPlaylist: (playlistId: string, trackId: string) =>
-    request<Playlist>(`/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' }),
-
   // USERS - manual subscription (1m/3m/1y) after free 2y tier
   getUsers: (search?: string) => {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
@@ -322,12 +349,11 @@ export const api = {
 
   // DASHBOARD STATS CALCULATOR
   getDashboardStats: async (): Promise<DashboardStats> => {
-    const [albRes, trkRes, sngRes, orgRes, plRes, chatRes, usrRes] = await Promise.allSettled([
+    const [albRes, trkRes, sngRes, orgRes, chatRes, usrRes] = await Promise.allSettled([
       api.getAlbums(),
       api.getTracks(),
       api.getSingers(),
       api.getOrganizations(),
-      api.getPlaylists(),
       api.getChatMessages(),
       api.getUsers().catch(() => [] as any),
     ]);
@@ -336,7 +362,6 @@ export const api = {
     const trk = trkRes.status === 'fulfilled' ? trkRes.value : [];
     const sng = sngRes.status === 'fulfilled' ? sngRes.value : [];
     const org = orgRes.status === 'fulfilled' ? orgRes.value : [];
-    const pl = plRes.status === 'fulfilled' ? plRes.value : [];
     const chat = chatRes.status === 'fulfilled' ? chatRes.value : [];
     const usr = usrRes.status === 'fulfilled' ? (usrRes.value as any[]) : [];
 
@@ -348,7 +373,6 @@ export const api = {
       totalTracks: trk.length,
       totalSingers: sng.length,
       totalOrganizations: org.length,
-      totalPlaylists: pl.length,
       totalChatMessages: chat.length,
       totalPlayCount,
       totalUsers: usr.length,

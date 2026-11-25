@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import { MediaImage } from '../common/MediaImage';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { GenreInput } from '../common/GenreInput';
 import {
   Music,
   Plus,
@@ -36,6 +37,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [genreOptions, setGenreOptions] = useState<string[]>([]);
   const [filterAlbumId, setFilterAlbumId] = useState<string>(selectedAlbumId || '');
   const [filterGenre, setFilterGenre] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +65,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
   const [karaokeFile, setKaraokeFile] = useState<File | null>(null);
   const [karaokeAudioUrlString, setKaraokeAudioUrlString] = useState('');
   const [lyrics, setLyrics] = useState('');
-  const [genre, setGenre] = useState('Folk');
+  const [genre, setGenre] = useState('');
   const [playCount, setPlayCount] = useState<number>(0);
   const [hasKaraoke, setHasKaraoke] = useState(false);
 
@@ -105,12 +107,14 @@ export const TracksView: React.FC<TracksViewProps> = ({
   const fetchTracksAndAlbums = async () => {
     setIsLoading(true);
     try {
-      const [tData, aData] = await Promise.all([
+      const [tData, aData, genreData] = await Promise.all([
         api.getTracks(filterAlbumId || undefined),
         api.getAlbums(),
+        api.getGenres(),
       ]);
       setTracks(tData || []);
       setAlbums(aData || []);
+      setGenreOptions(genreData || []);
     } catch (err: any) {
       addToast('error', `Failed to load tracks: ${err.message}`);
     } finally {
@@ -139,7 +143,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
     setKaraokeFile(null);
     setKaraokeAudioUrlString('');
     setLyrics('');
-    setGenre('Folk');
+    setGenre('');
     setPlayCount(0);
     setHasKaraoke(false);
     setIsModalOpen(true);
@@ -162,7 +166,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
     setKaraokeFile(null);
     setKaraokeAudioUrlString(track.karaokeAudioUrl || '');
     setLyrics(track.lyrics || '');
-    setGenre(track.genre || 'Folk');
+    setGenre(track.genre || '');
     setPlayCount(track.playCount || 0);
     setHasKaraoke(track.hasKaraoke || false);
     setIsModalOpen(true);
@@ -287,12 +291,12 @@ export const TracksView: React.FC<TracksViewProps> = ({
       t.albumName.toLowerCase().includes(term) ||
       (t.genre || '').toLowerCase().includes(term);
 
-    const matchesGenre = filterGenre === 'all' || (t.genre || 'Folk') === filterGenre;
+    const matchesGenre = filterGenre === 'all' || (t.genre || 'Unspecified') === filterGenre;
 
     return matchesSearch && matchesGenre;
   });
 
-  const availableGenres = Array.from(new Set(tracks.map((t) => t.genre || 'Folk'))).filter(Boolean);
+  const availableGenres = Array.from(new Set(tracks.map((t) => t.genre || 'Unspecified'))).filter(Boolean);
 
   return (
     <div className="p-6 space-y-6 text-[#ededed]">
@@ -420,7 +424,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
 
                     <td className="px-4 py-2.5">
                       <span className="px-2 py-0.5 rounded bg-[#141414] border border-[#282828] text-[#888888] font-mono text-[10px]">
-                        {track.genre || 'Folk'}
+                        {track.genre || 'Unspecified'}
                       </span>
                     </td>
 
@@ -669,13 +673,7 @@ export const TracksView: React.FC<TracksViewProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[#ededed] font-medium mb-1 font-mono">Genre</label>
-                  <input
-                    type="text"
-                    placeholder="Folk / Acoustic"
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
-                  />
+                  <GenreInput value={genre} onChange={setGenre} options={genreOptions} />
                 </div>
 
                 <div>

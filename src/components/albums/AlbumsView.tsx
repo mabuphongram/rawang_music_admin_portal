@@ -18,6 +18,10 @@ import {
   FileText,
   Music,
   CheckCircle2,
+  Crown,
+  Unlock,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface AlbumsViewProps {
@@ -53,6 +57,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   const [ownerModel, setOwnerModel] = useState<OwnerModel>('Singer');
   const [ownerId, setOwnerId] = useState('');
   const [releaseYear, setReleaseYear] = useState<number>(new Date().getFullYear());
+  const [isPremium, setIsPremium] = useState(false);
+  const [price, setPrice] = useState<number>(0);
+  const [isPublished, setIsPublished] = useState(true);
+  const [order, setOrder] = useState(0);
   const [description, setDescription] = useState('');
   const [coverResName, setCoverResName] = useState('');
   const [coverImageString, setCoverImageString] = useState('');
@@ -105,6 +113,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     setOwnerModel('Singer');
     setOwnerId('');
     setReleaseYear(new Date().getFullYear());
+    setIsPremium(false);
+    setPrice(0);
+    setIsPublished(true);
+    setOrder(Math.max(0, ...albums.map((a) => Number(a.order ?? 0))) + 1);
     setDescription('');
     setCoverResName('');
     setCoverImageString('');
@@ -120,6 +132,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     setOwnerModel(album.ownerModel || (album.ownerType === 'singer' ? 'Singer' : 'Organization'));
     setOwnerId(album.ownerId || '');
     setReleaseYear(album.releaseYear || new Date().getFullYear());
+    setIsPremium(Boolean(album.isPremium));
+    setPrice(Number(album.price || 0));
+    setIsPublished(album.isPublished ?? true);
+    setOrder(Number(album.order ?? 0));
     setDescription(album.description || '');
     setCoverResName(album.coverResName || '');
     setCoverImageString(album.coverImage || '');
@@ -165,6 +181,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
         if (ownerId) fd.append('ownerId', ownerId);
         if (coverResName) fd.append('coverResName', coverResName);
         if (description) fd.append('description', description.trim());
+        fd.append('isPremium', String(isPremium));
+        fd.append('price', String(price));
+        fd.append('isPublished', String(isPublished));
+        fd.append('order', String(order));
         fd.append('coverImage', coverFile);
         bodyData = fd;
       } else {
@@ -175,9 +195,13 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           ownerModel,
           ownerId,
           releaseYear: Number(releaseYear),
+          order,
           coverResName,
           coverImage: coverImageString,
           description: description.trim(),
+          isPremium,
+          price,
+          isPublished,
         };
       }
 
@@ -197,6 +221,21 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
       addToast('error', `Album save error: ${err.message}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleTogglePublished = async (album: Album) => {
+    const nextPublished = !(album.isPublished ?? true);
+    try {
+      await api.updateAlbum(album.id, { isPublished: nextPublished });
+      addToast(
+        'success',
+        `Album "${album.title}" ${nextPublished ? 'published' : 'hidden'} successfully.`
+      );
+      triggerRefresh();
+      fetchAlbums();
+    } catch (err: any) {
+      addToast('error', `Publish status error: ${err.message}`);
     }
   };
 
@@ -297,9 +336,25 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                     type="album"
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
+                  <div className={`absolute top-2 left-2 backdrop-blur-md px-2 py-0.5 rounded border text-[10px] font-mono font-bold flex items-center gap-1 ${
+                    album.isPremium
+                      ? 'bg-amber-500/15 border-amber-400/30 text-amber-300'
+                      : 'bg-[#3ecf8e]/10 border-[#3ecf8e]/30 text-[#3ecf8e]'
+                  }`}>
+                    {album.isPremium ? <Crown className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                    {album.isPremium ? 'PREMIUM' : 'FREE'}
+                  </div>
                   <div className="absolute top-2 right-2 bg-[#121212]/90 backdrop-blur-md px-2 py-0.5 rounded border border-[#282828] text-[10px] font-mono text-[#3ecf8e]">
                     {album.releaseYear}
                   </div>
+                  {!(album.isPublished ?? true) && (
+                    <span className="absolute bottom-2 left-2 bg-[#121212]/90 backdrop-blur-md px-2 py-0.5 rounded border border-amber-400/30 text-[10px] font-mono font-bold text-amber-400">
+                      HIDDEN
+                    </span>
+                  )}
+                  <span className="absolute bottom-2 right-2 bg-[#121212]/90 backdrop-blur-md px-2 py-0.5 rounded border border-[#282828] text-[10px] font-mono font-bold text-[#3ecf8e]">
+                    ORDER {album.order ?? 0}
+                  </span>
                 </div>
 
                 <h4 className="text-xs font-bold text-white truncate mb-1" title={album.title}>
@@ -317,6 +372,12 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   <span className="truncate">{album.ownerName}</span>
                 </div>
 
+                {album.isPremium && (
+                  <div className="text-[11px] font-mono text-amber-300 mb-2">
+                    {Number(album.price || 0).toLocaleString()} MMK one-time
+                  </div>
+                )}
+
                 <p className="text-xs text-[#666666] line-clamp-2 min-h-[32px]">
                   {album.description || 'No description provided.'}
                 </p>
@@ -332,6 +393,21 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                 </button>
 
                 <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleTogglePublished(album)}
+                    className={`p-1.5 rounded border transition-colors ${
+                      album.isPublished ?? true
+                        ? 'bg-[#3ecf8e]/10 border-[#3ecf8e]/20 text-[#3ecf8e] hover:bg-[#3ecf8e]/20'
+                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20'
+                    }`}
+                    title={album.isPublished ?? true ? 'Hide from app' : 'Publish to app'}
+                  >
+                    {album.isPublished ?? true ? (
+                      <Eye className="w-3.5 h-3.5" />
+                    ) : (
+                      <EyeOff className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                   <button
                     onClick={() => handleOpenEdit(album)}
                     className="p-1.5 rounded bg-[#222222] border border-[#333333] hover:bg-[#2a2a2a] text-[#ededed] transition-colors"
@@ -372,7 +448,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               {editingAlbum ? 'Edit Album' : 'Create New Album'}
             </h3>
             <p className="text-[11px] text-[#888888] mb-6 font-mono">
-              Schema contract: title, ownerType, ownerName, releaseYear, coverImage, description
+              Schema contract: title, ownerType, ownerName, releaseYear, order, coverImage, description, isPremium, isPublished, price (MMK)
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
@@ -425,6 +501,22 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                     onChange={(e) => setReleaseYear(Number(e.target.value))}
                     className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[#ededed] font-medium mb-1 font-mono">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={order}
+                    onChange={(e) => setOrder(Number(e.target.value))}
+                    className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
+                  />
+                  <p className="mt-1 text-[10px] text-[#666666]">
+                    Lower numbers appear first.
+                  </p>
                 </div>
               </div>
 
@@ -480,6 +572,108 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] placeholder-[#666666] focus:outline-none focus:border-[#3ecf8e]"
                 />
               </div>
+
+              {/* Album Access */}
+              <div>
+                <label className="block text-[#ededed] font-medium mb-1 font-mono">
+                  Album Access
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPremium(false)}
+                    className={`text-left rounded border p-3 transition-colors ${
+                      !isPremium
+                        ? 'bg-[#3ecf8e]/10 border-[#3ecf8e]/60'
+                        : 'bg-[#141414] border-[#282828] hover:border-[#3e3e3e]'
+                    }`}
+                  >
+                    <span className={`flex items-center gap-1.5 font-mono font-bold ${!isPremium ? 'text-[#3ecf8e]' : 'text-[#ededed]'}`}>
+                      <Unlock className="w-3.5 h-3.5" /> Free
+                    </span>
+                    <span className="block mt-1 text-[10px] text-[#888888]">
+                      Everyone can stream and download.
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPremium(true)}
+                    className={`text-left rounded border p-3 transition-colors ${
+                      isPremium
+                        ? 'bg-amber-500/10 border-amber-400/60'
+                        : 'bg-[#141414] border-[#282828] hover:border-[#3e3e3e]'
+                    }`}
+                  >
+                    <span className={`flex items-center gap-1.5 font-mono font-bold ${isPremium ? 'text-amber-300' : 'text-[#ededed]'}`}>
+                      <Crown className="w-3.5 h-3.5" /> Premium
+                    </span>
+                    <span className="block mt-1 text-[10px] text-[#888888]">
+                      Tracks stay locked until unlocked.
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Publish Status */}
+              <div>
+                <label className="block text-[#ededed] font-medium mb-1 font-mono">
+                  Publish Status
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPublished(true)}
+                    className={`text-left rounded border p-3 transition-colors ${
+                      isPublished
+                        ? 'bg-[#3ecf8e]/10 border-[#3ecf8e]/60'
+                        : 'bg-[#141414] border-[#282828] hover:border-[#3e3e3e]'
+                    }`}
+                  >
+                    <span className={`flex items-center gap-1.5 font-mono font-bold ${isPublished ? 'text-[#3ecf8e]' : 'text-[#ededed]'}`}>
+                      <Eye className="w-3.5 h-3.5" /> Published
+                    </span>
+                    <span className="block mt-1 text-[10px] text-[#888888]">
+                      Visible in the mobile app.
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPublished(false)}
+                    className={`text-left rounded border p-3 transition-colors ${
+                      !isPublished
+                        ? 'bg-amber-500/10 border-amber-400/60'
+                        : 'bg-[#141414] border-[#282828] hover:border-[#3e3e3e]'
+                    }`}
+                  >
+                    <span className={`flex items-center gap-1.5 font-mono font-bold ${!isPublished ? 'text-amber-300' : 'text-[#ededed]'}`}>
+                      <EyeOff className="w-3.5 h-3.5" /> Hidden
+                    </span>
+                    <span className="block mt-1 text-[10px] text-[#888888]">
+                      Kept in admin only, not published.
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {isPremium && (
+                <div>
+                  <label className="block text-[#ededed] font-medium mb-1 font-mono">
+                    One-time Price (MMK) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    required
+                    value={price}
+                    onChange={(e) => setPrice(Number(e.target.value))}
+                    className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
+                  />
+                  <p className="mt-1 text-[10px] text-[#888888]">
+                    Users pay this amount once and keep permanent access to this album.
+                  </p>
+                </div>
+              )}
 
               {/* Cover Image */}
               <div>
@@ -561,3 +755,4 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     </div>
   );
 };
+

@@ -33,6 +33,14 @@ export const Header: React.FC<HeaderProps> = ({
       title: 'Albums',
       subtitle: 'Catalogue albums by singers, organizations & anonymous owners',
     },
+    payments: {
+      title: 'Album Payments',
+      subtitle: 'Review payment screenshots and unlock permanent premium album access',
+    },
+    'album-sales': {
+      title: 'Album Sales',
+      subtitle: 'Owner purchase records, automatically calculated earnings and history cleanup',
+    },
     tracks: {
       title: 'Audio Tracks',
       subtitle: 'Audio files, karaoke versions, lyrics, duration & play counts',
@@ -67,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
     },
     users: {
       title: 'Users',
-      subtitle: 'Phone auth, manual 1m/3m/1y subscriptions, 1000 free 2y tier',
+      subtitle: 'Phone auth accounts and permanently purchased premium albums',
     },
     chat: {
       title: 'Broadcast Log',
@@ -106,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Action Controls */}
       <div className="flex items-center gap-2.5">
         {/* Search input with Supabase kbd badge */}
-        {['live', 'albums', 'tracks', 'singers', 'organizations', 'heroslides', 'contributions', 'requests', 'ownership', 'users', 'chat'].includes(activeTab) && (
+        {['live', 'albums', 'payments', 'tracks', 'singers', 'organizations', 'heroslides', 'contributions', 'requests', 'ownership', 'users', 'chat'].includes(activeTab) && (
           <div className="relative w-48 sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#666666]" />
             <input

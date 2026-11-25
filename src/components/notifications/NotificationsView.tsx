@@ -29,7 +29,7 @@ const BODY_LIMIT = 500;
 const TEMPLATES = [
   {
     label: 'New release',
-    title: 'New music on Rawang Melodies',
+    title: 'New music on Rvwang Melodies',
     body: 'A new song has just been added. Open the app to listen now.',
   },
   {
@@ -78,7 +78,6 @@ export const NotificationsView: React.FC = () => {
   const isConfigured = Boolean(status?.configured);
   const canSend =
     isConfigured &&
-    title.trim().length > 0 &&
     body.trim().length > 0 &&
     title.length <= TITLE_LIMIT &&
     body.length <= BODY_LIMIT &&
@@ -90,8 +89,8 @@ export const NotificationsView: React.FC = () => {
       addToast('error', 'Push notifications are not configured on the backend.');
       return;
     }
-    if (!title.trim() || !body.trim()) {
-      addToast('warning', 'A title and message body are required.');
+    if (!body.trim()) {
+      addToast('warning', 'A message body is required.');
       return;
     }
     setIsConfirmOpen(true);
@@ -210,7 +209,7 @@ export const NotificationsView: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label htmlFor="push-title" className="text-xs font-mono font-bold text-[#a1a1a1]">
-                  Title
+                  Title (optional)
                 </label>
                 <span className={`text-[10px] font-mono ${title.length > TITLE_LIMIT ? 'text-red-400' : 'text-[#666666]'}`}>
                   {title.length}/{TITLE_LIMIT}
@@ -224,6 +223,9 @@ export const NotificationsView: React.FC = () => {
                 placeholder="New music on Rawang Melodies"
                 className="w-full bg-[#121212] border border-[#333333] rounded px-3 py-2 text-sm text-[#ededed] placeholder:text-[#555555] focus:outline-none focus:border-[#3ecf8e] transition-colors"
               />
+              <p className="mt-1 text-[10px] text-[#666666] font-mono">
+                Leave blank to use “Rawang Melodies” as the notification title.
+              </p>
             </div>
 
             <div>
@@ -311,7 +313,7 @@ export const NotificationsView: React.FC = () => {
                         <span className="text-[9px] text-white/40 shrink-0">now</span>
                       </div>
                       <p className="text-xs font-semibold text-white truncate mt-1">
-                        {title.trim() || 'Notification title'}
+                        {title.trim() || 'Rawang Melodies'}
                       </p>
                       <p className="text-[11px] leading-snug text-white/70 mt-0.5 break-words">
                         {body.trim() || 'Your message will appear here for every subscribed Android device.'}
@@ -368,7 +370,9 @@ export const NotificationsView: React.FC = () => {
                 {history.map((item) => (
                   <div key={`${item.messageId}-${item.sentAt}`} className="bg-[#171717] border border-[#282828] rounded p-2.5">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-semibold text-[#ededed] truncate">{item.title}</p>
+                      <p className="text-xs font-semibold text-[#ededed] truncate">
+                        {item.title || 'Rawang Melodies'}
+                      </p>
                       <span className="text-[10px] font-mono text-[#666666] shrink-0">
                         {new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>

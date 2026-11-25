@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Album, Track, Singer, Organization, Playlist, User } from '../../types';
+import { Album, Track, Singer, Organization, User } from '../../types';
 import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import {
@@ -35,7 +35,6 @@ export const ReportsView: React.FC = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [singers, setSingers] = useState<Singer[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,19 +42,17 @@ export const ReportsView: React.FC = () => {
     const loadAllData = async () => {
       setIsLoading(true);
       try {
-        const [a, t, s, o, p, u] = await Promise.all([
+        const [a, t, s, o, u] = await Promise.all([
           api.getAlbums(),
           api.getTracks(),
           api.getSingers(),
           api.getOrganizations(),
-          api.getPlaylists().catch(() => []),
           api.getUsers().catch(() => []),
         ]);
         setAlbums(a || []);
         setTracks(t || []);
         setSingers(s || []);
         setOrganizations(o || []);
-        setPlaylists(p || []);
         setUsers((u as User[]) || []);
       } catch (err: any) {
         addToast('error', `Reports data fetch error: ${err.message}`);
@@ -91,7 +88,7 @@ export const ReportsView: React.FC = () => {
     const headers = ['Type', 'Title/Name', 'Owner/Artist', 'Secondary Info', 'Plays/Count'];
     const rows: string[][] = [
       ...albums.map((a) => ['Album', a.title, a.ownerName, `Year ${a.releaseYear}`, `${a.trackCount} tracks`]),
-      ...tracks.map((t) => ['Track', t.title, t.artistName, t.genre || 'Folk', `${t.playCount} plays`]),
+      ...tracks.map((t) => ['Track', t.title, t.artistName, t.genre || 'Unspecified', `${t.playCount} plays`]),
       ...singers.map((s) => ['Singer', s.name, 'Solo Singer', s.description || '', '-']),
       ...organizations.map((o) => ['Organization', o.name, 'Org Archive', o.description || '', '-']),
     ];

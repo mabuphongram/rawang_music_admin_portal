@@ -1,10 +1,12 @@
-import React from 'react';
+﻿import React from 'react';
 import { useBackend } from '../../context/BackendContext';
 import { usePresence } from '../../context/PresenceContext';
 import {
   LayoutDashboard,
   Disc,
   Music,
+  CreditCard,
+  ShoppingBag,
   UserCheck,
   Building2,
   ListMusic,
@@ -28,6 +30,8 @@ export type NavTab =
   | 'dashboard'
   | 'live'
   | 'albums'
+  | 'payments'
+  | 'album-sales'
   | 'tracks'
   | 'singers'
   | 'organizations'
@@ -50,7 +54,6 @@ interface SidebarProps {
     totalTracks: number;
     totalSingers: number;
     totalOrganizations: number;
-    totalPlaylists: number;
     totalChatMessages: number;
   };
 }
@@ -63,6 +66,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, stats
     { id: 'dashboard' as NavTab, label: 'Overview', icon: LayoutDashboard },
     { id: 'live' as NavTab, label: 'Live Users', icon: Radio, count: liveCount },
     { id: 'albums' as NavTab, label: 'Albums', icon: Disc, count: stats?.totalAlbums },
+    { id: 'payments' as NavTab, label: 'Album Payments', icon: CreditCard },
+    { id: 'album-sales' as NavTab, label: 'Album Sales', icon: ShoppingBag },
     { id: 'tracks' as NavTab, label: 'Tracks', icon: Music, count: stats?.totalTracks },
     { id: 'singers' as NavTab, label: 'Singers', icon: UserCheck, count: stats?.totalSingers },
     { id: 'organizations' as NavTab, label: 'Organizations', icon: Building2, count: stats?.totalOrganizations },
@@ -195,3 +200,4 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, stats
     </aside>
   );
 };
+

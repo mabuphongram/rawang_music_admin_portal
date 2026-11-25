@@ -12,6 +12,10 @@ export interface Album {
   coverImage?: string;
   releaseYear: number;
   description?: string;
+  isPremium?: boolean;
+  price?: number;
+  isPublished?: boolean;
+  order?: number;
   trackCount: number;
   createdAt: string;
   updatedAt: string;
@@ -75,17 +79,6 @@ export interface Organization {
   trackCount?: number;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface Playlist {
-  id: string;
-  name: string;
-  description?: string;
-  createdTimestamp?: number;
-  iconName?: string;
-  trackIds?: string[];
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface HeroSlide {
@@ -201,6 +194,7 @@ export interface User {
   subscriptionStatus: SubscriptionStatus;
   subscriptionExpiresAt: string;
   subscriptionStartedAt: string;
+  purchasedAlbumIds?: string[];
   lastPaymentAt?: string | null;
   lastPaymentAmount?: number | null;
   mustChangePassword?: boolean;
@@ -209,12 +203,60 @@ export interface User {
   updatedAt: string;
 }
 
+export type AlbumPurchaseStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AlbumPurchase {
+  id: string;
+  userId: string | User;
+  albumId: string;
+  albumTitle: string;
+  amount: number;
+  screenshotUrl: string;
+  status: AlbumPurchaseStatus;
+  reviewNote?: string;
+  reviewedAt?: string | null;
+  reviewedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AlbumPurchaseDeleteResult {
+  deletedCount: number;
+  skippedCount: number;
+  screenshotCleanupFailures: number;
+}
+
+export interface AlbumSaleSummary {
+  id: string;
+  title: string;
+  isPremium: boolean;
+  price: number;
+  coverImage?: string;
+  totalAmount: number;
+  purchaseCount: number;
+  lastPurchaseAt: string | null;
+}
+
+export interface AlbumSaleRecord {
+  id: string;
+  amount: number;
+  buyerName: string;
+  buyerPhone: string;
+  buyerEmail: string;
+  purchasedAt: string;
+}
+
+export interface AlbumSalesResult {
+  totalEarned: number;
+  albums: AlbumSaleSummary[];
+  selected: (AlbumSaleSummary & { records: AlbumSaleRecord[] }) | null;
+}
+
 export interface DashboardStats {
   totalAlbums: number;
   totalTracks: number;
   totalSingers: number;
   totalOrganizations: number;
-  totalPlaylists: number;
   totalChatMessages: number;
   totalPlayCount: number;
   totalUsers?: number;

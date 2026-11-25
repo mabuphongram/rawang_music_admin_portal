@@ -68,6 +68,7 @@ let albums = [
     coverImage: 'albums/66b1a2f00000000000000001/cover.jpg',
     releaseYear: 2026,
     description: 'Atmospheric folk melodies from the high northern mountain ranges.',
+    isPremium: false,
     trackCount: 3,
     createdAt: new Date('2026-01-15').toISOString(),
     updatedAt: new Date('2026-01-15').toISOString(),
@@ -83,6 +84,7 @@ let albums = [
     coverImage: 'albums/66b1a2f00000000000000002/cover.jpg',
     releaseYear: 2025,
     description: 'Archival collection of traditional community flutes and choral anthems.',
+    isPremium: false,
     trackCount: 2,
     createdAt: new Date('2026-02-10').toISOString(),
     updatedAt: new Date('2026-02-10').toISOString(),
@@ -288,7 +290,7 @@ app.get('/api/albums/:id', (req, res) => {
 });
 
 app.post('/api/albums', (req, res) => {
-  const { title, ownerType, ownerName, releaseYear, ownerModel, ownerId, coverResName, coverImage, description } = req.body;
+  const { title, ownerType, ownerName, releaseYear, ownerModel, ownerId, coverResName, coverImage, description, isPremium } = req.body;
   if (!title || !ownerType || !ownerName || !releaseYear) {
     return res.status(400).json({ error: 'Missing required fields: title, ownerType, ownerName, releaseYear' });
   }
@@ -304,6 +306,7 @@ app.post('/api/albums', (req, res) => {
     coverImage: coverImage || `albums/${id}/cover.jpg`,
     releaseYear: Number(releaseYear),
     description: description || '',
+    isPremium: isPremium === true || isPremium === 'true' || isPremium === 1 || isPremium === '1',
     trackCount: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -321,6 +324,9 @@ app.put('/api/albums/:id', (req, res) => {
     ...existing,
     ...req.body,
     releaseYear: req.body.releaseYear ? Number(req.body.releaseYear) : existing.releaseYear,
+    isPremium: req.body.isPremium === undefined
+      ? existing.isPremium
+      : req.body.isPremium === true || req.body.isPremium === 'true' || req.body.isPremium === 1 || req.body.isPremium === '1',
     updatedAt: new Date().toISOString(),
   };
   albums[index] = updated;

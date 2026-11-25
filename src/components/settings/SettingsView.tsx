@@ -226,9 +226,9 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <div className="p-3 bg-[#141414] rounded border border-[#282828] space-y-1">
-            <div className="font-mono font-bold text-purple-400">Playlists & Chat</div>
+            <div className="font-mono font-bold text-purple-400">Community Chat</div>
             <p className="text-[#888888] text-[11px]">
-              Populated tracks inspector (`/playlists/:id/tracks`) and read-only chat feed stream.
+              Read-only chat feed stream.
             </p>
           </div>
 
