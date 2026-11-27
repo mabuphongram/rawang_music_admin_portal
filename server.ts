@@ -28,6 +28,7 @@ let singers = [
     description: 'Master of traditional Rawang mountain melodies and modern acoustic fusion.',
     phone: '',
     videoLinks: [] as string[],
+    displayOrder: 0,
     createdAt: new Date('2026-01-10').toISOString(),
     updatedAt: new Date('2026-01-10').toISOString(),
   },
@@ -38,6 +39,7 @@ let singers = [
     description: 'Celebrated vocal artist known for contemporary Rawang pop and gospel songs.',
     phone: '',
     videoLinks: [] as string[],
+    displayOrder: 1,
     createdAt: new Date('2026-02-01').toISOString(),
     updatedAt: new Date('2026-02-01').toISOString(),
   },
@@ -70,6 +72,7 @@ let albums = [
     description: 'Atmospheric folk melodies from the high northern mountain ranges.',
     isPremium: false,
     trackCount: 3,
+    order: 0,
     createdAt: new Date('2026-01-15').toISOString(),
     updatedAt: new Date('2026-01-15').toISOString(),
   },
@@ -86,6 +89,7 @@ let albums = [
     description: 'Archival collection of traditional community flutes and choral anthems.',
     isPremium: false,
     trackCount: 2,
+    order: 1,
     createdAt: new Date('2026-02-10').toISOString(),
     updatedAt: new Date('2026-02-10').toISOString(),
   },
@@ -278,9 +282,36 @@ app.get('/api/albums', (req, res) => {
   if (ownerType) {
     result = result.filter((a) => a.ownerType === ownerType);
   }
-  // Oldest first
-  result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  result.sort(
+    (a, b) =>
+      (a.order ?? 0) - (b.order ?? 0) ||
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
   res.json(result);
+});
+
+app.put('/api/albums/reorder', (req, res) => {
+  const ids: string[] = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : [];
+  if (ids.length === 0) {
+    return res.status(400).json({ error: 'ids array is required' });
+  }
+  if (ids.some((id) => !albums.some((a) => a.id === id))) {
+    return res.status(400).json({ error: 'One or more albums were not found' });
+  }
+  ids.forEach((id, index) => {
+    const album = albums.find((a) => a.id === id);
+    if (album) {
+      album.order = index;
+      album.updatedAt = new Date().toISOString();
+    }
+  });
+  res.json(
+    [...albums].sort(
+      (a, b) =>
+        (a.order ?? 0) - (b.order ?? 0) ||
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+  );
 });
 
 app.get('/api/albums/:id', (req, res) => {
@@ -295,6 +326,10 @@ app.post('/api/albums', (req, res) => {
     return res.status(400).json({ error: 'Missing required fields: title, ownerType, ownerName, releaseYear' });
   }
   const id = generateMongoId();
+  const order =
+    Number.isFinite(Number(req.body.order))
+      ? Number(req.body.order)
+      : albums.reduce((max, a) => Math.max(max, a.order ?? -1), -1) + 1;
   const newAlbum = {
     id,
     title,
@@ -308,6 +343,7 @@ app.post('/api/albums', (req, res) => {
     description: description || '',
     isPremium: isPremium === true || isPremium === 'true' || isPremium === 1 || isPremium === '1',
     trackCount: 0,
+    order,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -703,7 +739,9 @@ app.post('/api/owner-requests/:id/approve', (req, res) => {
   const linkedExisting = Boolean(existingUser);
   if (existingUser && existingUser.role === 'user') existingUser.role = 'artist';
   if (item.ownerModel === 'Singer') {
-    singers.push({ id: profileId, name: item.name, avatarUrl: '', description: item.description, phone: item.phone, videoLinks: item.videoLinks, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    const displayOrder =
+      singers.reduce((max, s) => Math.max(max, s.displayOrder ?? -1), -1) + 1;
+    singers.push({ id: profileId, name: item.name, avatarUrl: '', description: item.description, phone: item.phone, videoLinks: item.videoLinks, displayOrder, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   } else {
     organizations.push({ id: profileId, name: item.name, avatarUrl: '', description: item.description, phone: item.phone, videoLinks: item.videoLinks, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   }
@@ -745,7 +783,36 @@ app.post('/api/owner-requests/:id/reject', (req, res) => {
 
 // SINGERS
 app.get('/api/singers', (req, res) => {
-  res.json(singers);
+  const sorted = [...singers].sort(
+    (a, b) =>
+      (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  res.json(sorted);
+});
+
+app.put('/api/singers/reorder', (req, res) => {
+  const ids: string[] = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : [];
+  if (ids.length === 0) {
+    return res.status(400).json({ error: 'ids array is required' });
+  }
+  if (ids.some((id) => !singers.some((s) => s.id === id))) {
+    return res.status(400).json({ error: 'One or more singers were not found' });
+  }
+  ids.forEach((id, index) => {
+    const singer = singers.find((s) => s.id === id);
+    if (singer) {
+      singer.displayOrder = index;
+      singer.updatedAt = new Date().toISOString();
+    }
+  });
+  res.json(
+    [...singers].sort(
+      (a, b) =>
+        (a.displayOrder ?? 0) - (b.displayOrder ?? 0) ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  );
 });
 
 app.get('/api/singers/:id', (req, res) => {
@@ -759,6 +826,8 @@ app.post('/api/singers', (req, res) => {
   if (!name) return res.status(400).json({ error: 'Name is required' });
 
   const id = generateMongoId();
+  const displayOrder =
+    singers.reduce((max, s) => Math.max(max, s.displayOrder ?? -1), -1) + 1;
   const newSinger = {
     id,
     name,
@@ -766,6 +835,7 @@ app.post('/api/singers', (req, res) => {
     description: description || '',
     phone: '',
     videoLinks: [] as string[],
+    displayOrder,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

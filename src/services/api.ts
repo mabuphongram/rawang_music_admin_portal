@@ -126,6 +126,11 @@ export const api = {
   },
 
   getAlbum: (id: string) => request<Album>(`/albums/${id}`),
+  reorderAlbums: (ids: string[]) =>
+    request<Album[]>('/albums/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }),
 
   createAlbum: (formData: FormData | Record<string, unknown>) => {
     let body: BodyInit;
@@ -239,6 +244,11 @@ export const api = {
 
   // SINGERS
   getSingers: () => request<Singer[]>('/singers'),
+  reorderSingers: (ids: string[]) =>
+    request<Singer[]>('/singers/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }),
   getSinger: (id: string) => request<Singer>(`/singers/${id}`),
   createSinger: (formData: FormData | Record<string, unknown>) => {
     const body = formData instanceof FormData ? formData : JSON.stringify(formData);

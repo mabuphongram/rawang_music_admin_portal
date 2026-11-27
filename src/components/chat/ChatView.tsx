@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChatMessage, Track } from '../../types';
 import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
-import { MessageSquare, Send, Play, Info, User, Bot, Paperclip } from 'lucide-react';
+import { MessageSquare, Send, Play, Info, User, Bot } from 'lucide-react';
 
 interface ChatViewProps {
   searchTerm: string;
@@ -16,7 +16,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ searchTerm }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Form
-  const [senderName, setSenderName] = useState('Admin Operator');
+  const [senderName, setSenderName] = useState('RVWANG MELODIES');
   const [messageText, setMessageText] = useState('');
   const [attachedTrackId, setAttachedTrackId] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -73,7 +73,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ searchTerm }) => {
   const filteredMessages = messages.filter((m) => {
     const term = searchTerm.toLowerCase();
     return (
-      m.senderName.toLowerCase().includes(term) ||
+      (m.senderName || '').toLowerCase().includes(term) ||
       (m.message || '').toLowerCase().includes(term) ||
       (m.attachedTrackTitle || '').toLowerCase().includes(term)
     );

@@ -60,6 +60,7 @@ export interface Singer {
   phone?: string;
   videoLinks?: string[];
   socialLinks?: SocialLinks;
+  displayOrder?: number;
   // computed stats from backend aggregation
   albumCount?: number;
   trackCount?: number;

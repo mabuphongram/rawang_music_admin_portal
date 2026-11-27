@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import { useBackend } from '../../context/BackendContext';
 import { MediaImage } from '../common/MediaImage';
 import { ConfirmDialog } from '../common/ConfirmDialog';
-import { UserCheck, Plus, Edit2, Trash2, X, CheckCircle2, User, Music } from 'lucide-react';
+import { UserCheck, Plus, Edit2, Trash2, X, CheckCircle2, User, Music, GripVertical, Loader2 } from 'lucide-react';
 
 interface SingersViewProps {
   searchTerm: string;
@@ -40,6 +40,12 @@ export const SingersView: React.FC<SingersViewProps> = ({
   // Delete modal
   const [deletingSinger, setDeletingSinger] = useState<Singer | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Drag-and-drop ordering (persisted through the backend's createdAt sort)
+  const [draggedSingerId, setDraggedSingerId] = useState<string | null>(null);
+  const [dragOverSingerId, setDragOverSingerId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+  const isReorderDisabled = Boolean(searchTerm.trim()) || isReordering;
 
   useEffect(() => {
     if (isCreateOpen) {
@@ -159,6 +165,39 @@ export const SingersView: React.FC<SingersViewProps> = ({
     }
   };
 
+  const handleDropSinger = async (targetId: string) => {
+    if (!draggedSingerId || draggedSingerId === targetId || isReorderDisabled) {
+      setDragOverSingerId(null);
+      return;
+    }
+
+    const fromIndex = singers.findIndex((s) => s.id === draggedSingerId);
+    const targetIndex = singers.findIndex((s) => s.id === targetId);
+    if (fromIndex === -1 || targetIndex === -1) return;
+
+    const moved = singers[fromIndex];
+    const remaining = singers.filter((s) => s.id !== draggedSingerId);
+    const targetIndexAfterRemoval = remaining.findIndex((s) => s.id === targetId);
+    const insertAt = targetIndexAfterRemoval + (fromIndex < targetIndex ? 1 : 0);
+    const reordered = [...remaining];
+    reordered.splice(insertAt, 0, moved);
+
+    setSingers(reordered);
+    setDraggedSingerId(null);
+    setDragOverSingerId(null);
+    setIsReordering(true);
+    try {
+      const saved = await api.reorderSingers(reordered.map((s) => s.id));
+      setSingers(saved || reordered);
+      addToast('success', 'Singer order updated.');
+    } catch (err: any) {
+      addToast('error', `Failed to save singer order: ${err.message}`);
+      await fetchSingers();
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   const filteredSingers = singers.filter((s) => {
     const term = searchTerm.toLowerCase();
     return (
@@ -174,6 +213,17 @@ export const SingersView: React.FC<SingersViewProps> = ({
         <div>
           <h3 className="text-sm font-mono font-bold text-white">Singers Management</h3>
           <p className="text-xs text-[#888888]">Solo Rawang vocalists & recording artists</p>
+          <p className="text-[11px] text-[#666666] mt-1 flex items-center gap-1.5">
+            {isReordering ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" /> Saving new order...
+              </>
+            ) : searchTerm.trim() ? (
+              'Clear the search to reorder singers.'
+            ) : (
+              'Drag the grip handle to change the display order.'
+            )}
+          </p>
         </div>
 
         <button
@@ -210,8 +260,59 @@ export const SingersView: React.FC<SingersViewProps> = ({
           {filteredSingers.map((singer) => (
             <div
               key={singer.id}
-              className="bg-[#1c1c1c] border border-[#282828] hover:border-[#3e3e3e] rounded p-5 shadow-sm flex flex-col items-center text-center justify-between group transition-all"
+              data-singer-card
+              onDragOver={(e) => {
+                if (isReorderDisabled) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverSingerId !== singer.id) setDragOverSingerId(singer.id);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                  setDragOverSingerId(null);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                void handleDropSinger(singer.id);
+              }}
+              className={`relative bg-[#1c1c1c] border rounded p-5 shadow-sm flex flex-col items-center text-center justify-between group transition-all ${
+                dragOverSingerId === singer.id
+                  ? 'border-[#3ecf8e] ring-1 ring-[#3ecf8e]/40'
+                  : 'border-[#282828] hover:border-[#3e3e3e]'
+              } ${draggedSingerId === singer.id ? 'opacity-40' : ''}`}
             >
+              <button
+                type="button"
+                draggable={!isReorderDisabled}
+                disabled={isReorderDisabled}
+                onDragStart={(e) => {
+                  if (isReorderDisabled) {
+                    e.preventDefault();
+                    return;
+                  }
+                  const card = (e.currentTarget as HTMLElement).closest(
+                    '[data-singer-card]'
+                  ) as HTMLElement | null;
+                  if (card) e.dataTransfer.setDragImage(card, 24, 24);
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDraggedSingerId(singer.id);
+                }}
+                onDragEnd={() => {
+                  setDraggedSingerId(null);
+                  setDragOverSingerId(null);
+                }}
+                className="absolute left-2 top-2 p-1.5 rounded bg-[#222222]/80 border border-[#333333] text-[#888888] hover:text-[#3ecf8e] hover:border-[#3ecf8e]/40 cursor-grab active:cursor-grabbing disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title={
+                  isReorderDisabled
+                    ? 'Clear search to reorder singers'
+                    : 'Drag to reorder singer'
+                }
+                aria-label="Drag to reorder singer"
+              >
+                <GripVertical className="w-4 h-4" />
+              </button>
+
               <div className="w-full flex flex-col items-center">
                 <MediaImage
                   src={singer.avatarUrl}

@@ -22,6 +22,8 @@ import {
   Unlock,
   Eye,
   EyeOff,
+  GripVertical,
+  Loader2,
 } from 'lucide-react';
 
 interface AlbumsViewProps {
@@ -60,7 +62,6 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   const [isPremium, setIsPremium] = useState(false);
   const [price, setPrice] = useState<number>(0);
   const [isPublished, setIsPublished] = useState(true);
-  const [order, setOrder] = useState(0);
   const [description, setDescription] = useState('');
   const [coverResName, setCoverResName] = useState('');
   const [coverImageString, setCoverImageString] = useState('');
@@ -69,6 +70,13 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   // Delete modal
   const [deletingAlbum, setDeletingAlbum] = useState<Album | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Drag-and-drop ordering
+  const [draggedAlbumId, setDraggedAlbumId] = useState<string | null>(null);
+  const [dragOverAlbumId, setDragOverAlbumId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+  const isReorderDisabled =
+    Boolean(searchTerm.trim()) || ownerFilter !== 'all' || isReordering;
 
   // Handle opening create externally
   useEffect(() => {
@@ -116,7 +124,6 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     setIsPremium(false);
     setPrice(0);
     setIsPublished(true);
-    setOrder(Math.max(0, ...albums.map((a) => Number(a.order ?? 0))) + 1);
     setDescription('');
     setCoverResName('');
     setCoverImageString('');
@@ -135,7 +142,6 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     setIsPremium(Boolean(album.isPremium));
     setPrice(Number(album.price || 0));
     setIsPublished(album.isPublished ?? true);
-    setOrder(Number(album.order ?? 0));
     setDescription(album.description || '');
     setCoverResName(album.coverResName || '');
     setCoverImageString(album.coverImage || '');
@@ -184,7 +190,6 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
         fd.append('isPremium', String(isPremium));
         fd.append('price', String(price));
         fd.append('isPublished', String(isPublished));
-        fd.append('order', String(order));
         fd.append('coverImage', coverFile);
         bodyData = fd;
       } else {
@@ -195,7 +200,6 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           ownerModel,
           ownerId,
           releaseYear: Number(releaseYear),
-          order,
           coverResName,
           coverImage: coverImageString,
           description: description.trim(),
@@ -255,6 +259,39 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     }
   };
 
+  const handleDropAlbum = async (targetId: string) => {
+    if (!draggedAlbumId || draggedAlbumId === targetId || isReorderDisabled) {
+      setDragOverAlbumId(null);
+      return;
+    }
+
+    const fromIndex = albums.findIndex((a) => a.id === draggedAlbumId);
+    const targetIndex = albums.findIndex((a) => a.id === targetId);
+    if (fromIndex === -1 || targetIndex === -1) return;
+
+    const moved = albums[fromIndex];
+    const remaining = albums.filter((a) => a.id !== draggedAlbumId);
+    const targetIndexAfterRemoval = remaining.findIndex((a) => a.id === targetId);
+    const insertAt = targetIndexAfterRemoval + (fromIndex < targetIndex ? 1 : 0);
+    const reordered = [...remaining];
+    reordered.splice(insertAt, 0, moved);
+
+    setAlbums(reordered);
+    setDraggedAlbumId(null);
+    setDragOverAlbumId(null);
+    setIsReordering(true);
+    try {
+      const saved = await api.reorderAlbums(reordered.map((a) => a.id));
+      setAlbums(saved || reordered);
+      addToast('success', 'Album order updated.');
+    } catch (err: any) {
+      addToast('error', `Failed to save album order: ${err.message}`);
+      await fetchAlbums();
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   // Filter by search
   const filteredAlbums = albums.filter((a) => {
     const term = searchTerm.toLowerCase();
@@ -269,24 +306,37 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     <div className="p-6 space-y-6 text-[#ededed]">
       {/* Top Filter & Action Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#1c1c1c] border border-[#282828] p-4 rounded">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-[#666666]" />
-          <span className="text-xs font-mono font-bold text-[#888888] uppercase">Owner Type:</span>
-          <div className="flex items-center gap-1 bg-[#141414] p-1 rounded border border-[#282828] text-xs">
-            {['all', 'singer', 'organization', 'anonymous'].map((type) => (
-              <button
-                key={type}
-                onClick={() => setOwnerFilter(type)}
-                className={`px-3 py-1 rounded font-mono text-xs capitalize transition-colors ${
-                  ownerFilter === type
-                    ? 'bg-[#3ecf8e] text-black font-bold shadow-sm'
-                    : 'text-[#888888] hover:text-[#ededed]'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+        <div className="flex flex-col items-start gap-1">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-[#666666]" />
+            <span className="text-xs font-mono font-bold text-[#888888] uppercase">Owner Type:</span>
+            <div className="flex items-center gap-1 bg-[#141414] p-1 rounded border border-[#282828] text-xs">
+              {['all', 'singer', 'organization', 'anonymous'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setOwnerFilter(type)}
+                  className={`px-3 py-1 rounded font-mono text-xs capitalize transition-colors ${
+                    ownerFilter === type
+                      ? 'bg-[#3ecf8e] text-black font-bold shadow-sm'
+                      : 'text-[#888888] hover:text-[#ededed]'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
           </div>
+          <p className="text-[11px] text-[#666666] flex items-center gap-1.5">
+            {isReordering ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" /> Saving new order...
+              </>
+            ) : searchTerm.trim() || ownerFilter !== 'all' ? (
+              'Clear search and select “all” to reorder albums.'
+            ) : (
+              'Drag the grip handle to change the display order.'
+            )}
+          </p>
         </div>
 
         <button
@@ -326,7 +376,27 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           {filteredAlbums.map((album) => (
             <div
               key={album.id}
-              className="bg-[#1c1c1c] border border-[#282828] hover:border-[#3e3e3e] rounded p-4 flex flex-col justify-between group transition-all"
+              data-album-card
+              onDragOver={(e) => {
+                if (isReorderDisabled) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverAlbumId !== album.id) setDragOverAlbumId(album.id);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                  setDragOverAlbumId(null);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                void handleDropAlbum(album.id);
+              }}
+              className={`relative bg-[#1c1c1c] border rounded p-4 flex flex-col justify-between group transition-all ${
+                dragOverAlbumId === album.id
+                  ? 'border-[#3ecf8e] ring-1 ring-[#3ecf8e]/40'
+                  : 'border-[#282828] hover:border-[#3e3e3e]'
+              } ${draggedAlbumId === album.id ? 'opacity-40' : ''}`}
             >
               <div>
                 <div className="relative aspect-square rounded overflow-hidden mb-3 bg-[#141414] border border-[#282828]">
@@ -352,9 +422,6 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                       HIDDEN
                     </span>
                   )}
-                  <span className="absolute bottom-2 right-2 bg-[#121212]/90 backdrop-blur-md px-2 py-0.5 rounded border border-[#282828] text-[10px] font-mono font-bold text-[#3ecf8e]">
-                    ORDER {album.order ?? 0}
-                  </span>
                 </div>
 
                 <h4 className="text-xs font-bold text-white truncate mb-1" title={album.title}>
@@ -384,13 +451,45 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#282828] flex items-center justify-between">
-                <button
-                  onClick={() => onSelectAlbumForTracks && onSelectAlbumForTracks(album.id)}
-                  className="text-xs text-[#3ecf8e] hover:underline font-mono flex items-center gap-1"
-                >
-                  <Music className="w-3.5 h-3.5" />
-                  <span>{album.trackCount || 0} Tracks</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    draggable={!isReorderDisabled}
+                    disabled={isReorderDisabled}
+                    onDragStart={(e) => {
+                      if (isReorderDisabled) {
+                        e.preventDefault();
+                        return;
+                      }
+                      const card = (e.currentTarget as HTMLElement).closest(
+                        '[data-album-card]'
+                      ) as HTMLElement | null;
+                      if (card) e.dataTransfer.setDragImage(card, 24, 24);
+                      e.dataTransfer.effectAllowed = 'move';
+                      setDraggedAlbumId(album.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedAlbumId(null);
+                      setDragOverAlbumId(null);
+                    }}
+                    className="p-1.5 rounded bg-[#222222] border border-[#333333] text-[#888888] hover:text-[#3ecf8e] hover:border-[#3ecf8e]/40 cursor-grab active:cursor-grabbing disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    title={
+                      isReorderDisabled
+                        ? 'Clear search and select “all” to reorder albums'
+                        : 'Drag to reorder album'
+                    }
+                    aria-label="Drag to reorder album"
+                  >
+                    <GripVertical className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => onSelectAlbumForTracks && onSelectAlbumForTracks(album.id)}
+                    className="text-xs text-[#3ecf8e] hover:underline font-mono flex items-center gap-1"
+                  >
+                    <Music className="w-3.5 h-3.5" />
+                    <span>{album.trackCount || 0} Tracks</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-1">
                   <button
@@ -448,7 +547,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               {editingAlbum ? 'Edit Album' : 'Create New Album'}
             </h3>
             <p className="text-[11px] text-[#888888] mb-6 font-mono">
-              Schema contract: title, ownerType, ownerName, releaseYear, order, coverImage, description, isPremium, isPublished, price (MMK)
+              Schema contract: title, ownerType, ownerName, releaseYear, coverImage, description, isPremium, isPublished, price (MMK)
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
@@ -503,21 +602,6 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[#ededed] font-medium mb-1 font-mono">
-                    Display Order
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={order}
-                    onChange={(e) => setOrder(Number(e.target.value))}
-                    className="w-full bg-[#141414] border border-[#282828] rounded px-3 py-2 text-[#ededed] focus:outline-none focus:border-[#3ecf8e]"
-                  />
-                  <p className="mt-1 text-[10px] text-[#666666]">
-                    Lower numbers appear first.
-                  </p>
-                </div>
               </div>
 
               {/* Owner Selection Dropdown */}
